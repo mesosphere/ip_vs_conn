@@ -22,7 +22,7 @@ parse(Filepath) ->
 
 %% matched first line
 parse(Fd, {ok, Data}, Conns) -> 
-  Tokens = string:tokens(Data),
+  Tokens = string:tokens(Data, " "),
   Conn = to_connection(Tokens),
   parse(Fd, file:read_line(Fd), [Conn | Conns]);
 
@@ -57,11 +57,34 @@ hex_str_to_int(Str) -> erlang:list_to_integer(Str, 16).
 dec_str_to_int(Str) -> erlang:list_to_integer(Str, 10).
 
 -ifdef(TEST).
+parse_test_() -> 
+  Str="TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYN_RECV         57",
+  Conn = #ip_vs_conn{ protocol =  tcp,
+                      from_ip = 167792566,
+                      from_port = 69,
+                      to_ip = 167792566,
+                      to_port = 8080,
+                      dst_ip = 167792566,
+                      dst_port = 8081,
+                      tcp_state = syn_recv,
+                      expires = 57,
+                      pe_name = "",
+                      pe_data = ""
+                    },
+  [?_assertEqual([Conn], parse(0, {ok, Str}, []))].
+
+
 
 to_protocol_test_() -> [?_assertEqual(tcp, to_protocol("TCP")),
                         ?_assertEqual(udp, to_protocol("UDP"))].
 
 to_tcp_state_test_() -> [?_assertEqual(syn_recv, to_tcp_state("SYN_RECV")),
                          ?_assertEqual(established, to_tcp_state("ESTABLISHED"))].
+
+hex_str_to_int_test_() -> [?_assertEqual(8081, hex_str_to_int("1f91")),
+                           ?_assertEqual(8080, hex_str_to_int("1f90"))].
+
+dec_str_to_int_test_() -> [?_assertEqual(57, dec_str_to_int("57")),
+                           ?_assertEqual(58, dec_str_to_int("58"))].
 
 -endif.
