@@ -60,4 +60,8 @@ dec_str_to_int(Str) -> erlang:list_to_integer(Str, 10).
 
 to_protocol_test_() -> [?_assertEqual(tcp, to_protocol("TCP")),
                         ?_assertEqual(udp, to_protocol("UDP"))].
+
+to_tcp_state_test_() -> [?_assertEqual(syn_recv, to_tcp_state("SYN_RECV")),
+                         ?_assertEqual(established, to_tcp_state("ESTABLISHED"))].
+
 -endif.
