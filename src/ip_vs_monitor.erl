@@ -21,7 +21,6 @@
   code_change/3]).
 
 -record(state, {
-  callbacks = maps:new(),
   ip_vs_conn_syns = maps:new() %% all the connection that have seen a syn_recv
   }).
 
@@ -92,7 +91,7 @@ splay_ms() ->
   NextMinute + Splay.
 
 update_ip_vs_conn(State) ->
-  ProcFile = ip_vs_config:ip_vs_conn_path(),
+  ProcFile = ip_vs_config:ip_vs_conn_proc_file(),
   Conns = ip_vs_conn:parse(ProcFile),
   Syns = State#state.ip_vs_conn_syns,
   NewSyns = lists:fold(Conns,
