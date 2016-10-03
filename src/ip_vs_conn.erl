@@ -24,7 +24,7 @@ file_fold_line(_, Z, _, _) -> Z.
 
 %% matched first line
 parse(Data, Conns) ->
-    Tokens = string:tokens(Data, " "),
+    Tokens = string:tokens(string:strip(Data, both, $\n), " "),
     Conn = to_connection(Tokens),
     Conn ++ Conns.
 
