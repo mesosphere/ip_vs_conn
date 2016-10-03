@@ -23,10 +23,13 @@ file_fold_line(Func, Z, Fd, {ok, Data}) -> file_fold(Func, Func(Data, Z), {ok, F
 file_fold_line(_, Z, _, _) -> Z.
 
 %% matched first line
-parse(Data, Conns) -> 
+parse(Data, Conns) ->
     Tokens = string:tokens(Data, " "),
     Conn = to_connection(Tokens),
-    [Conn | Conns].
+    Conn ++ Conns.
+
+to_connection(["Pro", "FromIP", "FPrt", "ToIP", "TPrt", "DestIP",
+               "DPrt", "State", "Expires", "PEName", "PEData"]) -> [];
 
 to_connection(Ls = [_Pro, _FromIP, _FPrt, _ToIP, _TPrt,
                     _DestIP, _DPrt, _State, _Expires]) ->
@@ -34,18 +37,18 @@ to_connection(Ls = [_Pro, _FromIP, _FPrt, _ToIP, _TPrt,
 
 to_connection([Pro, FromIP, FPrt, ToIP, TPrt,
                DestIP, DPrt, State, Expires, PEName, PEData]) ->
-    #ip_vs_conn{ protocol =  to_protocol(Pro),
-                 from_ip = hex_str_to_int(FromIP),
-                 from_port = hex_str_to_int(FPrt),
-                 to_ip = hex_str_to_int(ToIP),
-                 to_port = hex_str_to_int(TPrt),
-                 dst_ip = hex_str_to_int(DestIP),
-                 dst_port = hex_str_to_int(DPrt),
-                 tcp_state = to_tcp_state(State),
-                 expires = dec_str_to_int(Expires),
-                 pe_name = PEName,
-                 pe_data = PEData
-               }.
+    [#ip_vs_conn{ protocol =  to_protocol(Pro),
+                  from_ip = hex_str_to_int(FromIP),
+                  from_port = hex_str_to_int(FPrt),
+                  to_ip = hex_str_to_int(ToIP),
+                  to_port = hex_str_to_int(TPrt),
+                  dst_ip = hex_str_to_int(DestIP),
+                  dst_port = hex_str_to_int(DPrt),
+                  tcp_state = to_tcp_state(State),
+                  expires = dec_str_to_int(Expires),
+                  pe_name = PEName,
+                  pe_data = PEData
+                }].
 
 to_protocol("TCP") -> tcp;
 to_protocol("UDP") -> udp.
@@ -58,7 +61,11 @@ dec_str_to_int(Str) -> erlang:list_to_integer(Str, 10).
 
 -ifdef(TEST).
 
-parse3_test_() -> 
+parse_first_line_test_() -> 
+    Str="Pro FromIP   FPrt ToIP     TPrt DestIP   DPrt State       Expires PEName PEData",
+    [?_assertEqual([], parse(Str, []))].
+
+parse_conn_line_test_() -> 
     Str="TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYN_RECV         57",
     Conn = #ip_vs_conn{ protocol =  tcp,
                         from_ip = 167792566,
