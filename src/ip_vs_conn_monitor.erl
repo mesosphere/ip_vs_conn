@@ -84,7 +84,7 @@ terminate(_Reason, _State = #state{}) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-get_open() -> gen_server:cast(?SERVER, get_open).
+get_open() -> gen_server:call(?SERVER, get_open).
 
 %% TODO: borrowed from minuteman, should probably be a util somewhere
 -spec(splay_ms() -> integer()).
@@ -102,19 +102,18 @@ update_conns(State) ->
     ProcFile = ip_vs_conn_config:proc_file(),
     Conns = ip_vs_conn:parse(ProcFile),
     Syns = State#state.syns,
-    NewSyns = lists:foldl(Conns,
-                          fun(Conn, Acc) ->
-                              update_syns(Syns, Acc, Conn)
+    NewSyns = lists:foldl(fun(Conn, Acc) ->
+                              update_syns(Syns, Conn, Acc)
                           end,
-                          maps:new()),
+                          maps:new(), Conns),
     State#state{syns = NewSyns}.
 
 update_syns(Syns, Conn, Acc) ->
-    Current = maps:get(conn_id(Conn), Syns),
+    Current = maps:get(conn_id(Conn), Syns, badkey),
     update(Conn, Acc, Current).
 
 %% new connection
-update(Conn = #ip_vs_conn{tcp_state = syn_recv}, Acc, {badmap, _}) ->
+update(Conn = #ip_vs_conn{tcp_state = syn_recv}, Acc, badkey) ->
     maps:put(conn_id(Conn), erlang:monotonic_time(seconds), Acc);
 
 %% old connection still in syn_recv state
