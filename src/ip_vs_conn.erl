@@ -55,6 +55,7 @@ to_protocol("UDP") -> udp.
 
 to_tcp_state("SYN_RECV") -> syn_recv;
 to_tcp_state("FIN_WAIT") -> fin_wait;
+to_tcp_state("TIME_WAIT") -> time_wait;
 to_tcp_state("ESTABLISHED") -> established.
 
 hex_str_to_int(Str) -> erlang:list_to_integer(Str, 16).
@@ -89,6 +90,7 @@ to_protocol_test_() ->
 to_tcp_state_test_() ->
     [?_assertEqual(syn_recv, to_tcp_state("SYN_RECV")),
      ?_assertEqual(established, to_tcp_state("ESTABLISHED")),
+     ?_assertEqual(time_wait, to_tcp_state("TIME_WAIT")),
      ?_assertEqual(fin_wait, to_tcp_state("FIN_WAIT"))].
 
 hex_str_to_int_test_() ->
