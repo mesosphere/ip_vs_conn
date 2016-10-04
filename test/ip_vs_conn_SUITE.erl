@@ -17,7 +17,7 @@ test_parse(_Config) ->
 
 test_server(_Config) ->
   timer:sleep(2000),
-  {ok, Map} = ip_vs_conn_monitor:get_open(),
+  {ok, Map} = ip_vs_conn_monitor:get_dropped(),
   Keys = [{167792566,69,167792566,8080,167792566,8081},
           {167792566,47808,167792566,8080,167792566,8081},
           {167792566,62061,167792566,8080,167792566,8081}],
@@ -26,7 +26,7 @@ test_server(_Config) ->
 
 test_server2(_Config) ->
   timer:sleep(2000),
-  {ok, Map} = ip_vs_conn_monitor:get_open(),
+  {ok, Map} = ip_vs_conn_monitor:get_dropped(),
   Keys = [{167792566,69,167792566,8080,167792566,8081}],
   Keys = maps:keys(Map),
   ok.

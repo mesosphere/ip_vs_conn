@@ -11,7 +11,7 @@
 
 -behaviour(gen_server).
 
--export([get_open/0]).
+-export([get_dropped/0]).
 -export([start_link/0]).
 
 -export([init/1,
@@ -48,7 +48,7 @@ init([]) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_call(get_open, _From, State) ->
+handle_call(get_dropped, _From, State) ->
     {reply, {ok, State#state.syns}, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
@@ -84,7 +84,7 @@ terminate(_Reason, _State = #state{}) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-get_open() -> gen_server:call(?SERVER, get_open).
+get_dropped() -> gen_server:call(?SERVER, get_dropped).
 
 %% TODO: borrowed from minuteman, should probably be a util somewhere
 -spec(splay_ms() -> integer()).
