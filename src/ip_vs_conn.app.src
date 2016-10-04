@@ -1,5 +1,5 @@
 {application, ip_vs_conn,
- [{description, "/proc/ip_vs_conn monitor"},
+ [{description, "/proc/net/ip_vs_conn monitor"},
   {vsn, "0.1.0"},
   {registered, []},
   {applications,
@@ -7,8 +7,7 @@
     stdlib
    ]},
   {env,[]},
-  {modules, []},
-
+  {mod, { ip_vs_conn_app, []}},
   {maintainers, []},
   {licenses, []},
   {links, []}

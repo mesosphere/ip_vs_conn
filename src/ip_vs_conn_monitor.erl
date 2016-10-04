@@ -11,6 +11,7 @@
 
 -behaviour(gen_server).
 
+-export([get_open/0]).
 -export([start_link/0]).
 
 -export([init/1,
@@ -47,7 +48,7 @@ init([]) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_call(open_connections, _From, State) ->
+handle_call(get_open, _From, State) ->
     {reply, {ok, State#state.syns}, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
@@ -83,6 +84,8 @@ terminate(_Reason, _State = #state{}) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
+get_open() -> gen_server:cast(?SERVER, get_open).
+
 %% TODO: borrowed from minuteman, should probably be a util somewhere
 -spec(splay_ms() -> integer()).
 splay_ms() ->
@@ -99,11 +102,11 @@ update_conns(State) ->
     ProcFile = ip_vs_conn_config:proc_file(),
     Conns = ip_vs_conn:parse(ProcFile),
     Syns = State#state.syns,
-    NewSyns = lists:fold(Conns,
-                         fun(Conn, Acc) ->
-                             update_syns(Syns, Acc, Conn)
-                         end,
-                         maps:new()),
+    NewSyns = lists:foldl(Conns,
+                          fun(Conn, Acc) ->
+                              update_syns(Syns, Acc, Conn)
+                          end,
+                          maps:new()),
     State#state{syns = NewSyns}.
 
 update_syns(Syns, Conn, Acc) ->

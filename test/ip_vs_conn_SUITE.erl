@@ -3,7 +3,7 @@
 
 -include_lib("common_test/include/ct.hrl").
 
-all() -> [test_parse].
+all() -> [test_parse, test_server].
 
 test_parse(_Config) ->
   Proc = ip_vs_conn_config:proc_file(),
@@ -13,9 +13,19 @@ test_parse(_Config) ->
   Ret = ip_vs_conn:parse(Proc),
   ok.
 
+test_server(_Config) ->
+  Proc = ip_vs_conn_config:proc_file(),
+  timer:sleep(2000),
+  Keys = [{167792566,47808,167792566,8080,167792566,8081},
+          {167792566,62061,167792566,8080,167792566,8081},
+          {167792566,69,167792566,8080,167792566,8081}],
+  {ok, Keys} = ip_vs_conn_monitor:get_open(),
+  ok.
+
 init_per_testcase(_, Config) ->
   Proc = "../../../../testdata/proc_ip_vs_conn",
   application:set_env(ip_vs_conn, interval_seconds, 1),
+  application:set_env(ip_vs_conn, splay_seconds, 1),
   application:set_env(ip_vs_conn, proc_file, Proc),
   {ok, _} = application:ensure_all_started(ip_vs_conn),
   Config.
