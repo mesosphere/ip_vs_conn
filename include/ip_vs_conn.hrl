@@ -8,7 +8,7 @@
 %%%-------------------------------------------------------------------
 
 -type protocol() :: tcp | udp.
--type tcp_state() :: syn_recv | established.
+-type tcp_state() :: syn_recv | established | fin_wait.
 
 -record(ip_vs_conn, {
   protocol    :: protocol(),
