@@ -5,6 +5,7 @@
 
 all() -> [test_parse,
           test_parse_missing,
+          test_gen_server,
           test_server,
           test_server2].
 
@@ -19,6 +20,10 @@ test_parse(_Config) ->
 test_parse_missing(_Config) ->
     [] = ip_vs_conn:parse("foobar"),
     ok.
+
+test_gen_server(_Config) ->
+    ok = gen_server:call(ip_vs_conn_monitor, hello),
+    ok = gen_server:cast(ip_vs_conn_monitor, hello).
 
 test_server(_Config) ->
     timer:sleep(2000),
