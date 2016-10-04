@@ -116,6 +116,9 @@ update_syns(Syns, Conn, Acc) ->
 update(Conn = #ip_vs_conn{tcp_state = syn_recv}, Acc, badkey) ->
     maps:put(conn_id(Conn), erlang:monotonic_time(seconds), Acc);
 
+%% skip connections in the other state
+update(_Conn, Acc, badkey) -> Acc;
+
 %% old connection still in syn_recv state
 update(Conn = #ip_vs_conn{tcp_state = syn_recv}, Acc, Start) ->
     maps:put(conn_id(Conn), Start, Acc).
