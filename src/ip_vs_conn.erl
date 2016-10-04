@@ -8,7 +8,6 @@
 %%%-------------------------------------------------------------------
 -module(ip_vs_conn).
 -include_lib("include/ip_vs_conn.hrl").
--include_lib("eunit/include/eunit.hrl").
 -export([parse/1
         ]).
 
@@ -62,6 +61,7 @@ hex_str_to_int(Str) -> erlang:list_to_integer(Str, 16).
 dec_str_to_int(Str) -> erlang:list_to_integer(Str, 10).
 
 -ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
 
 parse_first_line_test_() -> 
     Str="Pro FromIP   FPrt ToIP     TPrt DestIP   DPrt State       Expires PEName PEData",
