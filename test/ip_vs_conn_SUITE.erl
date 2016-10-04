@@ -23,6 +23,7 @@ test_parse_missing(_Config) ->
     ok.
 
 test_gen_server(_Config) ->
+    erlang:send(ip_vs_conn_monitor, hello),
     ok = gen_server:call(ip_vs_conn_monitor, hello),
     ok = gen_server:cast(ip_vs_conn_monitor, hello).
 
