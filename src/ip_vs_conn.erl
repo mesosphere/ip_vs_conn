@@ -11,8 +11,8 @@
 -export([parse/1
         ]).
 
+%% Parse the proc file for connections in SYN_RECV state
 -spec(parse(string()) -> list(#ip_vs_conn{})).
-
 parse(Filepath) -> file_fold(fun parse/2, [], file:open(Filepath, [read, binary, raw, {read_ahead, 1024*64}])).
 
 file_fold(Func, Z, {ok, Fd}) -> file_fold_line(Func, Z, Fd, file:read_line(Fd));

@@ -3,14 +3,14 @@
 
 -include_lib("common_test/include/ct.hrl").
 
-all() -> [%test_gen_server,
-          %test_parse,
-          %test_parse_large_close,
-          test_parse_large_syn_recv%,
-          %test_parse_missing,
-          %test_server,
-          %test_server2,
-          %test_server_wait
+all() -> [test_gen_server,
+          test_parse,
+          test_parse_large_close,
+          test_parse_large_syn_recv,
+          test_parse_missing,
+          test_server,
+          test_server2,
+          test_server_wait
          ].
 
 test_parse(_Config) ->
@@ -37,9 +37,7 @@ test_parse_large_syn_recv(_Config) ->
     End = erlang:monotonic_time(micro_seconds),
     ct:pal("time to parse ~p", [End - Start]),
     65535 = length(Ret),
-    0 = length(Ret),
     ok.
-
 
 test_parse_missing(_Config) ->
     [] = ip_vs_conn:parse("foobar"),
