@@ -3,12 +3,13 @@
 
 -include_lib("common_test/include/ct.hrl").
 
-all() -> [test_parse,
+all() -> [test_gen_server,
+          test_parse,
           test_parse_missing,
-          test_gen_server,
           test_server,
           test_server2,
-          test_server_wait].
+          test_server_wait
+         ].
 
 test_parse(_Config) ->
     Proc = ip_vs_conn_config:proc_file(),
@@ -25,7 +26,10 @@ test_parse_missing(_Config) ->
 test_gen_server(_Config) ->
     erlang:send(ip_vs_conn_monitor, hello),
     ok = gen_server:call(ip_vs_conn_monitor, hello),
-    ok = gen_server:cast(ip_vs_conn_monitor, hello).
+    ok = gen_server:cast(ip_vs_conn_monitor, hello),
+    sys:suspend(ip_vs_conn_monitor),
+    sys:change_code(ip_vs_conn_monitor, random_old_vsn, ip_vs_conn_monitor, []),
+    sys:resume(ip_vs_conn_monitor).
 
 test_server(_Config) ->
     timer:sleep(2000),
