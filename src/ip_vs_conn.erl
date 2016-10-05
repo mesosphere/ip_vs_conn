@@ -13,7 +13,7 @@
 
 -spec(parse(string()) -> list(#ip_vs_conn{})).
 
-parse(Filepath) -> file_fold(fun parse/2, [], file:open(Filepath, [read])).
+parse(Filepath) -> file_fold(fun parse/2, [], file:open(Filepath, [read, binary])).
 
 file_fold(Func, Z, {ok, Fd}) -> file_fold_line(Func, Z, Fd, file:read_line(Fd));
 file_fold(_, Z, _) -> Z.
@@ -22,22 +22,22 @@ file_fold_line(Func, Z, Fd, {ok, Data}) -> file_fold(Func, Func(Data, Z), {ok, F
 file_fold_line(_, Z, _, _) -> Z.
 
 parse(Data, Conns) ->
-    Tokens = string:tokens(string:strip(Data, both, $\n), " "),
-    Conn = to_connection(Tokens),
+    Conn = conn(Data),
     Conn ++ Conns.
 
 %% matched first line
-to_connection(["Pro", "FromIP", "FPrt", "ToIP", "TPrt", "DestIP",
-               "DPrt", "State", "Expires", "PEName", "PEData"]) -> [];
-
-%% matched data without the PEName PEData fields
-to_connection(Ls = [_Pro, _FromIP, _FPrt, _ToIP, _TPrt,
-                    _DestIP, _DPrt, _State, _Expires]) ->
-    to_connection(Ls ++ ["",""]);
+conn(<<"Pro FromIP   FPrt ToIP     TPrt DestIP   DPrt State       Expires PEName PEData\n">>) -> [];
 
 %% matched data
-to_connection([Pro, FromIP, FPrt, ToIP, TPrt,
-               DestIP, DPrt, State, Expires, PEName, PEData]) ->
+conn(<<Pro:3/bytes,$\s,
+       FromIP:8/bytes,$\s,
+       FPrt:4/bytes,$\s,
+       ToIP:8/bytes,$\s,
+       TPrt:4/bytes,$\s,
+       DestIP:8/bytes,$\s,
+       DPrt:4/bytes,$\s,
+       Status:11/bytes,$\s,$\s,$\s,$\s,$\s,$\s,
+       Expires:2/bytes, PE/binary>>) ->
     [#ip_vs_conn{ protocol =  to_protocol(Pro),
                   from_ip = hex_str_to_int(FromIP),
                   from_port = hex_str_to_int(FPrt),
@@ -45,33 +45,41 @@ to_connection([Pro, FromIP, FPrt, ToIP, TPrt,
                   to_port = hex_str_to_int(TPrt),
                   dst_ip = hex_str_to_int(DestIP),
                   dst_port = hex_str_to_int(DPrt),
-                  tcp_state = to_tcp_state(State),
-                  expires = dec_str_to_int(Expires),
-                  pe_name = PEName,
-                  pe_data = PEData
+                  tcp_state = to_tcp_state(Status),
+                  expires = to_expires(Expires),
+                  pe_name = to_pe_name(PE),
+                  pe_data = to_pe_data(PE)
                 }].
 
-to_protocol("TCP") -> tcp;
-to_protocol("UDP") -> udp.
+to_protocol(<<"TCP">>) -> tcp;
+to_protocol(<<"UDP">>) -> udp.
 
-to_tcp_state("SYN_RECV") -> syn_recv;
-to_tcp_state("FIN_WAIT") -> fin_wait;
-to_tcp_state("TIME_WAIT") -> time_wait;
-to_tcp_state("CLOSE") -> close;
-to_tcp_state("ESTABLISHED") -> established.
+to_tcp_state(<<"SYN_RECV   ">>) -> syn_recv;
+to_tcp_state(<<"FIN_WAIT   ">>) -> fin_wait;
+to_tcp_state(<<"TIME_WAIT  ">>) -> time_wait;
+to_tcp_state(<<"CLOSE      ">>) -> close;
+to_tcp_state(<<"ESTABLISHED">>) -> established.
 
-hex_str_to_int(Str) -> erlang:list_to_integer(Str, 16).
-dec_str_to_int(Str) -> erlang:list_to_integer(Str, 10).
+to_expires(<<$\s,Exp:1/bytes>>) -> erlang:binary_to_integer(Exp, 10);
+to_expires(<<Exp:2/bytes>>) -> erlang:binary_to_integer(Exp, 10).
+
+to_pe_name(Bin) -> lists:nth(1, to_pe(Bin)).
+to_pe_data(Bin) -> lists:nth(2, to_pe(Bin)).
+
+to_pe(<<"\n">>) -> ["",""];
+to_pe(Bin) -> string:words(erlang:binary_to_list(Bin), $\s).
+
+hex_str_to_int(Str) -> erlang:binary_to_integer(Str, 16).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-parse_first_line_test_() -> 
-    Str="Pro FromIP   FPrt ToIP     TPrt DestIP   DPrt State       Expires PEName PEData",
+parse_first_line_test_() ->
+    Str = <<"Pro FromIP   FPrt ToIP     TPrt DestIP   DPrt State       Expires PEName PEData\n">>,
     [?_assertEqual([], parse(Str, []))].
 
 parse_conn_line_test_() -> 
-    Str="TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYN_RECV         57",
+    Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYN_RECV         57\n">>,
     Conn = #ip_vs_conn{ protocol =  tcp,
                         from_ip = 167792566,
                         from_port = 69,
@@ -87,22 +95,23 @@ parse_conn_line_test_() ->
     [?_assertEqual([Conn], parse(Str, []))].
 
 to_protocol_test_() ->
-    [?_assertEqual(tcp, to_protocol("TCP")),
-     ?_assertEqual(udp, to_protocol("UDP"))].
+    [?_assertEqual(tcp, to_protocol(<<"TCP">>)),
+     ?_assertEqual(udp, to_protocol(<<"UDP">>))].
 
 to_tcp_state_test_() ->
-    [?_assertEqual(syn_recv, to_tcp_state("SYN_RECV")),
-     ?_assertEqual(established, to_tcp_state("ESTABLISHED")),
-     ?_assertEqual(time_wait, to_tcp_state("TIME_WAIT")),
-     ?_assertEqual(close, to_tcp_state("CLOSE")),
-     ?_assertEqual(fin_wait, to_tcp_state("FIN_WAIT"))].
+    [?_assertEqual(syn_recv,    to_tcp_state(<<"SYN_RECV   ">>)),
+     ?_assertEqual(established, to_tcp_state(<<"ESTABLISHED">>)),
+     ?_assertEqual(time_wait,   to_tcp_state(<<"TIME_WAIT  ">>)),
+     ?_assertEqual(close,       to_tcp_state(<<"CLOSE      ">>)),
+     ?_assertEqual(fin_wait,    to_tcp_state(<<"FIN_WAIT   ">>))].
 
 hex_str_to_int_test_() ->
-    [?_assertEqual(8081, hex_str_to_int("1f91")),
-     ?_assertEqual(8080, hex_str_to_int("1f90"))].
+    [?_assertEqual(8081, hex_str_to_int(<<"1f91">>)),
+     ?_assertEqual(8080, hex_str_to_int(<<"1f90">>))].
 
 dec_str_to_int_test_() ->
-    [?_assertEqual(57, dec_str_to_int("57")),
-     ?_assertEqual(58, dec_str_to_int("58"))].
+    [?_assertEqual(57, to_expires(<<"57">>)),
+     ?_assertEqual(8, to_expires(<<" 8">>))].
 
 -endif.
+
