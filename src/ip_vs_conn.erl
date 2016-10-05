@@ -21,19 +21,21 @@ file_fold(_, Z, _) -> Z.
 file_fold_line(Func, Z, Fd, {ok, Data}) -> file_fold(Func, Func(Data, Z), {ok, Fd});
 file_fold_line(_, Z, _, _) -> Z.
 
-%% matched first line
 parse(Data, Conns) ->
     Tokens = string:tokens(string:strip(Data, both, $\n), " "),
     Conn = to_connection(Tokens),
     Conn ++ Conns.
 
+%% matched first line
 to_connection(["Pro", "FromIP", "FPrt", "ToIP", "TPrt", "DestIP",
                "DPrt", "State", "Expires", "PEName", "PEData"]) -> [];
 
+%% matched data without the PEName PEData fields
 to_connection(Ls = [_Pro, _FromIP, _FPrt, _ToIP, _TPrt,
                     _DestIP, _DPrt, _State, _Expires]) ->
     to_connection(Ls ++ ["",""]);
 
+%% matched data
 to_connection([Pro, FromIP, FPrt, ToIP, TPrt,
                DestIP, DPrt, State, Expires, PEName, PEData]) ->
     [#ip_vs_conn{ protocol =  to_protocol(Pro),
@@ -55,6 +57,7 @@ to_protocol("UDP") -> udp.
 to_tcp_state("SYN_RECV") -> syn_recv;
 to_tcp_state("FIN_WAIT") -> fin_wait;
 to_tcp_state("TIME_WAIT") -> time_wait;
+to_tcp_state("CLOSE") -> close;
 to_tcp_state("ESTABLISHED") -> established.
 
 hex_str_to_int(Str) -> erlang:list_to_integer(Str, 16).
@@ -91,6 +94,7 @@ to_tcp_state_test_() ->
     [?_assertEqual(syn_recv, to_tcp_state("SYN_RECV")),
      ?_assertEqual(established, to_tcp_state("ESTABLISHED")),
      ?_assertEqual(time_wait, to_tcp_state("TIME_WAIT")),
+     ?_assertEqual(close, to_tcp_state("CLOSE")),
      ?_assertEqual(fin_wait, to_tcp_state("FIN_WAIT"))].
 
 hex_str_to_int_test_() ->
