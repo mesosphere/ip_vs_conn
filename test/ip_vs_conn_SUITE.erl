@@ -3,10 +3,13 @@
 
 -include_lib("common_test/include/ct.hrl").
 
-all() -> [test_parse,
+all() -> [test_gen_server,
+          test_parse,
           test_parse_missing,
           test_server,
-          test_server2].
+          test_server2,
+          test_server_wait
+         ].
 
 test_parse(_Config) ->
     Proc = ip_vs_conn_config:proc_file(),
@@ -19,6 +22,14 @@ test_parse(_Config) ->
 test_parse_missing(_Config) ->
     [] = ip_vs_conn:parse("foobar"),
     ok.
+
+test_gen_server(_Config) ->
+    erlang:send(ip_vs_conn_monitor, hello),
+    ok = gen_server:call(ip_vs_conn_monitor, hello),
+    ok = gen_server:cast(ip_vs_conn_monitor, hello),
+    sys:suspend(ip_vs_conn_monitor),
+    sys:change_code(ip_vs_conn_monitor, random_old_vsn, ip_vs_conn_monitor, []),
+    sys:resume(ip_vs_conn_monitor).
 
 test_server(_Config) ->
     timer:sleep(2000),
@@ -36,7 +47,19 @@ test_server2(_Config) ->
     Keys = maps:keys(Map),
     ok.
 
+test_server_wait(_Config) ->
+    timer:sleep(2000),
+    {ok, Map} = ip_vs_conn_monitor:get_dropped(),
+    Keys = [{167792566,69,167792566,8080,167792566,8081}],
+    Keys = maps:keys(Map),
+    timer:sleep(2000),
+    {ok, Map} = ip_vs_conn_monitor:get_dropped(),
+    Keys = maps:keys(Map),
+    ok.
+
+
 proc_file(test_server2) -> "../../../../testdata/proc_ip_vs_conn2";
+proc_file(test_server_wait) -> "../../../../testdata/proc_ip_vs_conn2";
 proc_file(_) -> "../../../../testdata/proc_ip_vs_conn".
 
 init_per_testcase(Test, Config) ->

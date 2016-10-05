@@ -37,6 +37,7 @@ start_link() ->
     {ok, State :: #state{}} | {ok, State :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term()} | ignore).
 init([]) ->
+    process_flag(trap_exit, true),
     erlang:send_after(splay_ms(), self(), poll_proc),
     {ok, #state{}}.
 
