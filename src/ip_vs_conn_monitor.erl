@@ -66,8 +66,10 @@ handle_cast(_Request, State) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
 handle_info(poll_proc, State) ->
-    State1 = update_conns(State),
-    NewState = State1,
+    ProcFile = ip_vs_conn_config:proc_file(),
+    Conns = ip_vs_conn:parse(ProcFile),
+    NewSyns = ip_vs_conn_map:update(State#state.syns, Conns),
+    NewState = State#state{syns = NewSyns},
     erlang:send_after(splay_ms(), self(), poll_proc),
     {noreply, NewState};
    
@@ -98,36 +100,3 @@ splay_ms() ->
     Splay = rand:uniform(FlooredSplayMS),
 
     NextMinute + Splay.
-
-update_conns(State) ->
-    ProcFile = ip_vs_conn_config:proc_file(),
-    Conns = ip_vs_conn:parse(ProcFile),
-    Syns = State#state.syns,
-    NewSyns = lists:foldl(fun(Conn, Acc) ->
-                              update_syns(Syns, Conn, Acc)
-                          end,
-                          maps:new(), Conns),
-    State#state{syns = NewSyns}.
-
-update_syns(Syns, Conn, Acc) ->
-    Current = maps:get(conn_id(Conn), Syns, badkey),
-    update(Conn, Acc, Current).
-
-%% new connection
-update(Conn = #ip_vs_conn{tcp_state = syn_recv}, Acc, badkey) ->
-    maps:put(conn_id(Conn), erlang:monotonic_time(seconds), Acc);
-
-%% skip connections in the other state
-update(_Conn, Acc, badkey) -> Acc;
-
-%% old connection still in syn_recv state
-update(Conn = #ip_vs_conn{tcp_state = syn_recv}, Acc, Start) ->
-    maps:put(conn_id(Conn), Start, Acc).
-
-conn_id(Conn) ->
-    {Conn#ip_vs_conn.from_ip,
-     Conn#ip_vs_conn.from_port,
-     Conn#ip_vs_conn.to_ip,
-     Conn#ip_vs_conn.to_port,
-     Conn#ip_vs_conn.dst_ip,
-     Conn#ip_vs_conn.dst_port}.

@@ -24,3 +24,12 @@
   pe_data     :: string()
   }).
 
+-record(tcp_conn, {
+  from_ip     :: integer(),
+  from_port   :: integer(),
+  to_ip       :: integer(),
+  to_port     :: integer(),
+  dst_ip      :: integer(),
+  dst_port    :: integer()
+  }).
+
