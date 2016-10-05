@@ -5,7 +5,8 @@
 
 all() -> [%test_gen_server,
           %test_parse,
-          test_parse_large_close%,
+          %test_parse_large_close,
+          test_parse_large_syn_recv%,
           %test_parse_missing,
           %test_server,
           %test_server2,
@@ -26,8 +27,19 @@ test_parse_large_close(_Config) ->
     Ret = ip_vs_conn:parse(Proc),
     End = erlang:monotonic_time(micro_seconds),
     ct:pal("time to parse ~p", [End - Start]),
-    65535 = length(Ret),
+    0 = length(Ret),
     ok.
+
+test_parse_large_syn_recv(_Config) ->
+    Proc = ip_vs_conn_config:proc_file(),
+    Start = erlang:monotonic_time(micro_seconds),
+    Ret = ip_vs_conn:parse(Proc),
+    End = erlang:monotonic_time(micro_seconds),
+    ct:pal("time to parse ~p", [End - Start]),
+    65535 = length(Ret),
+    0 = length(Ret),
+    ok.
+
 
 test_parse_missing(_Config) ->
     [] = ip_vs_conn:parse("foobar"),
@@ -71,6 +83,7 @@ test_server_wait(_Config) ->
 proc_file(test_server2) -> "../../../../testdata/proc_ip_vs_conn2";
 proc_file(test_server_wait) -> "../../../../testdata/proc_ip_vs_conn2";
 proc_file(test_parse_large_close) -> "../../../../testdata/ip_vs_conn_large_close";
+proc_file(test_parse_large_syn_recv) -> "../../../../testdata/ip_vs_conn_large_syn_recv";
 proc_file(_) -> "../../../../testdata/proc_ip_vs_conn".
 
 init_per_testcase(Test, Config) ->
