@@ -76,7 +76,7 @@ test_server_wait(_Config) ->
     timer:sleep(2000),
     {ok, Map} = ip_vs_conn_monitor:get_dropped(),
     Keys = [{ip_vs_conn, tcp, 167792566,69,167792566,8080,167792566,8081}],
-    Keys = maps:keys(Map),
+    Keys = lists:map(fun(Key) -> ip_vs_conn:parse(Key) end, maps:keys(Map)),
     timer:sleep(2000),
     {ok, Map} = ip_vs_conn_monitor:get_dropped(),
     Keys = lists:map(fun(Key) -> ip_vs_conn:parse(Key) end, maps:keys(Map)),
