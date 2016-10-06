@@ -14,7 +14,7 @@
 -export([update/3]).
 
 %% update the map with new connection data
--spec(update(maps:map() -> #ip_vs_conn_state{} -> maps:new()) -> maps:new()).
+-spec(update(maps:map(), #ip_vs_conn_state{}, maps:new()) -> maps:new()).
 update(Original, Conn, Updated) ->
     Current = maps:get(Conn, Original, badkey),
     update_conn(Conn, Updated, Current).

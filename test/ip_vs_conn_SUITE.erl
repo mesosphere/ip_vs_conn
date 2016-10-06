@@ -14,18 +14,20 @@ all() -> [test_gen_server,
           test_update
          ].
 
+parse(#ip_vs_conn_state{connection = Conn}, List) -> [{p_vs_conn:parse(Conn) | List].
+
 test_parse(_Config) ->
     Proc = ip_vs_conn_config:proc_file(),
-    Ret = [{ip_vs_conn,tcp,167792566,47808,167792566,8080,167792566,8081,syn_recv,59,[],[]},
-           {ip_vs_conn,tcp,167792566,62061,167792566,8080,167792566,8081,syn_recv,58,[],[]},
-           {ip_vs_conn,tcp,167792566,69,167792566,8080,167792566,8081,syn_recv,57,[],[]}],
-    Ret = ip_vs_conn:parse(Proc),
+    Ret = [{ip_vs_conn,tcp,167792566,47808,167792566,8080,167792566,8081},
+           {ip_vs_conn,tcp,167792566,62061,167792566,8080,167792566,8081},
+           {ip_vs_conn,tcp,167792566,69,167792566,8080,167792566,8081}],
+    Ret = ip_vs_conn:fold(parse, []. Proc),
     ok.
 
 test_parse_large_close(_Config) ->
     Proc = ip_vs_conn_config:proc_file(),
     Start = erlang:monotonic_time(micro_seconds),
-    Ret = ip_vs_conn:parse(Proc),
+    Ret = ip_vs_conn:fold(parse, []. Proc),
     End = erlang:monotonic_time(micro_seconds),
     ct:pal("time to parse ~p", [End - Start]),
     0 = length(Ret),
@@ -34,7 +36,7 @@ test_parse_large_close(_Config) ->
 test_parse_large_syn_recv(_Config) ->
     Proc = ip_vs_conn_config:proc_file(),
     Start = erlang:monotonic_time(micro_seconds),
-    Ret = ip_vs_conn:parse(Proc),
+    Ret = ip_vs_conn:fold(parse, []. Proc),
     End = erlang:monotonic_time(micro_seconds),
     ct:pal("time to parse ~p", [End - Start]),
     65535 = length(Ret),
@@ -55,42 +57,44 @@ test_gen_server(_Config) ->
 test_server(_Config) ->
     timer:sleep(2000),
     {ok, Map} = ip_vs_conn_monitor:get_dropped(),
-    Keys = [{tcp_conn, 167792566,69,167792566,8080,167792566,8081},
-            {tcp_conn, 167792566,47808,167792566,8080,167792566,8081},
-            {tcp_conn, 167792566,62061,167792566,8080,167792566,8081}],
-    Keys = maps:keys(Map),
+    Keys = [{ip_vs_conn, tcp, 167792566,69,167792566,8080,167792566,8081},
+            {ip_vs_conn, tcp, 167792566,47808,167792566,8080,167792566,8081},
+            {ip_vs_conn, tcp, 167792566,62061,167792566,8080,167792566,8081}],
+    Keys = lists:map(fun(Key) -> ip_vs_conn:parse(Key) end, maps:keys(Map)),
     ok.
 
 test_server2(_Config) ->
     timer:sleep(2000),
     {ok, Map} = ip_vs_conn_monitor:get_dropped(),
-    Keys = [{tcp_conn, 167792566,69,167792566,8080,167792566,8081}],
-    Keys = maps:keys(Map),
+    Keys = [{ip_vs_conn, tcp, 167792566,69,167792566,8080,167792566,8081}],
+    Keys = lists:map(fun(Key) -> ip_vs_conn:parse(Key) end, maps:keys(Map)),
     ok.
 
 test_server_wait(_Config) ->
     timer:sleep(2000),
     {ok, Map} = ip_vs_conn_monitor:get_dropped(),
-    Keys = [{tcp_conn, 167792566,69,167792566,8080,167792566,8081}],
+    Keys = [{ip_vs_conn, tcp, 167792566,69,167792566,8080,167792566,8081}],
     Keys = maps:keys(Map),
     timer:sleep(2000),
     {ok, Map} = ip_vs_conn_monitor:get_dropped(),
-    Keys = maps:keys(Map),
+    Keys = lists:map(fun(Key) -> ip_vs_conn:parse(Key) end, maps:keys(Map)),
     ok.
 
 test_update(_Config) ->
-    ProcFile = ip_vs_conn_config:proc_file(),
-    Conns = ip_vs_conn:parse(ProcFile),
+    Proc = ip_vs_conn_config:proc_file(),
+    Conns = ip_vs_conn:fold(parse, []. Proc),
 
     Start1 = erlang:monotonic_time(micro_seconds),
-    Map = ip_vs_conn_map:update(maps:new(), Conns), 
+    Map = lists:foldl(fun(Conn, ZZ) -> ip_vs_conn_map:update(maps:new(), Conn, ZZ) end,
+                      maps:new(), Conns),
     End1 = erlang:monotonic_time(micro_seconds),
-    ct:pal("time to update ~p", [End1 - Start1]),
+    ct:pal("time to update empty ~p", [End1 - Start1]),
 
     Start2 = erlang:monotonic_time(micro_seconds),
-    Map2 = ip_vs_conn_map:update(maps:new(), Conns), 
+    Map2 = lists:foldl(fun(Conn, ZZ) -> ip_vs_conn_map:update(Map, Conn, ZZ) end,
+                      maps:new(), Conns),
     End2 = erlang:monotonic_time(micro_seconds),
-    ct:pal("time to update ~p", [End2 - Start2]),
+    ct:pal("time to update full ~p", [End2 - Start2]),
     Map = Map2,
     ok.
 
