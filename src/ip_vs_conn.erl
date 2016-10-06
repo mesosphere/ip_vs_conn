@@ -58,18 +58,6 @@ syn_recv(_) -> [].
 to_protocol(<<"TCP">>) -> tcp;
 to_protocol(<<"UDP">>) -> udp.
 
-to_tcp_state(<<"SYN_RECV   ">>) -> syn_recv;
-to_tcp_state(<<"NONE       ">>) -> none;
-to_tcp_state(<<"ESTABLISHED">>) -> established;
-to_tcp_state(<<"SYN_SENT   ">>) -> syn_sent;
-to_tcp_state(<<"FIN_WAIT   ">>) -> fin_wait;
-to_tcp_state(<<"TIME_WAIT  ">>) -> time_wait;
-to_tcp_state(<<"CLOSE      ">>) -> close;
-to_tcp_state(<<"CLOSE_WAIT ">>) -> close_wait;
-to_tcp_state(<<"LAST_ACK   ">>) -> last_ack;
-to_tcp_state(<<"LISTEN     ">>) -> listen;
-to_tcp_state(<<"SYNACK     ">>) -> synack.
-
 hex_str_to_int(Str) -> erlang:binary_to_integer(Str, 16).
 
 -ifdef(TEST).
@@ -123,20 +111,6 @@ parse_conn_line3_test_() ->
 to_protocol_test_() ->
     [?_assertEqual(tcp, to_protocol(<<"TCP">>)),
      ?_assertEqual(udp, to_protocol(<<"UDP">>))].
-
-to_tcp_state_test_() ->
-    [?_assertEqual(none,       to_tcp_state(<<"NONE       ">>)),
-     ?_assertEqual(established,to_tcp_state(<<"ESTABLISHED">>)),
-     ?_assertEqual(syn_sent,   to_tcp_state(<<"SYN_SENT   ">>)),
-     ?_assertEqual(syn_recv,   to_tcp_state(<<"SYN_RECV   ">>)),
-     ?_assertEqual(fin_wait,   to_tcp_state(<<"FIN_WAIT   ">>)),
-     ?_assertEqual(time_wait,  to_tcp_state(<<"TIME_WAIT  ">>)),
-     ?_assertEqual(close,      to_tcp_state(<<"CLOSE      ">>)),
-     ?_assertEqual(close_wait, to_tcp_state(<<"CLOSE_WAIT ">>)),
-     ?_assertEqual(last_ack,   to_tcp_state(<<"LAST_ACK   ">>)),
-     ?_assertEqual(listen,     to_tcp_state(<<"LISTEN     ">>)),
-     ?_assertEqual(synack,     to_tcp_state(<<"SYNACK     ">>))].
-
 
 hex_str_to_int_test_() ->
     [?_assertEqual(8081, hex_str_to_int(<<"1f91">>)),
