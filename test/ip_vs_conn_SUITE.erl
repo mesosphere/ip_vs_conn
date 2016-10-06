@@ -2,6 +2,7 @@
 -compile(export_all).
 
 -include_lib("common_test/include/ct.hrl").
+-include_lib("include/ip_vs_conn.hrl").
 
 all() -> [test_gen_server,
           test_parse,
@@ -14,20 +15,21 @@ all() -> [test_gen_server,
           test_update
          ].
 
-parse(#ip_vs_conn_state{connection = Conn}, List) -> [{p_vs_conn:parse(Conn) | List].
+parse(#ip_vs_conn_state{connection = Conn}, List) -> 
+    [ip_vs_conn:parse(Conn) | List].
 
 test_parse(_Config) ->
     Proc = ip_vs_conn_config:proc_file(),
     Ret = [{ip_vs_conn,tcp,167792566,47808,167792566,8080,167792566,8081},
            {ip_vs_conn,tcp,167792566,62061,167792566,8080,167792566,8081},
            {ip_vs_conn,tcp,167792566,69,167792566,8080,167792566,8081}],
-    Ret = ip_vs_conn:fold(parse, []. Proc),
+    Ret = ip_vs_conn:fold(fun parse/2, [], Proc),
     ok.
 
 test_parse_large_close(_Config) ->
     Proc = ip_vs_conn_config:proc_file(),
     Start = erlang:monotonic_time(micro_seconds),
-    Ret = ip_vs_conn:fold(parse, []. Proc),
+    Ret = ip_vs_conn:fold(fun parse/2, [], Proc),
     End = erlang:monotonic_time(micro_seconds),
     ct:pal("time to parse ~p", [End - Start]),
     0 = length(Ret),
@@ -36,14 +38,14 @@ test_parse_large_close(_Config) ->
 test_parse_large_syn_recv(_Config) ->
     Proc = ip_vs_conn_config:proc_file(),
     Start = erlang:monotonic_time(micro_seconds),
-    Ret = ip_vs_conn:fold(parse, []. Proc),
+    Ret = ip_vs_conn:fold(fun parse/2, [], Proc),
     End = erlang:monotonic_time(micro_seconds),
     ct:pal("time to parse ~p", [End - Start]),
     65535 = length(Ret),
     ok.
 
 test_parse_missing(_Config) ->
-    [] = ip_vs_conn:parse("foobar"),
+    Ret = ip_vs_conn:fold(fun parse/2, [], "foobar"),
     ok.
 
 test_gen_server(_Config) ->
@@ -82,7 +84,7 @@ test_server_wait(_Config) ->
 
 test_update(_Config) ->
     Proc = ip_vs_conn_config:proc_file(),
-    Conns = ip_vs_conn:fold(parse, []. Proc),
+    Conns = ip_vs_conn:fold(fun parse/2, [], Proc),
 
     Start1 = erlang:monotonic_time(micro_seconds),
     Map = lists:foldl(fun(Conn, ZZ) -> ip_vs_conn_map:update(maps:new(), Conn, ZZ) end,
