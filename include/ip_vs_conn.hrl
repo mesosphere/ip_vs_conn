@@ -10,26 +10,18 @@
 -type protocol() :: tcp | udp.
 -type tcp_state() :: none | established | syn_sent | syn_recv | fin_wait | time_wait | close | close_wait | last_ack | listen | synack.
 
--record(ip_vs_conn, {
-  protocol    :: protocol(),
-  from_ip     :: integer(),
-  from_port   :: integer(),
-  to_ip       :: integer(),
-  to_port     :: integer(),
-  dst_ip      :: integer(),
-  dst_port    :: integer(),
-  tcp_state   :: tcp_state(),
-  expires     :: integer(),
-  pe_name     :: string(),
-  pe_data     :: string()
-  }).
+-record(ip_vs_conn_state, {
+    connection  :: binary(),
+    tcp_state   :: tcp_state(),
+    }).
 
--record(tcp_conn, {
-  from_ip     :: integer(),
-  from_port   :: integer(),
-  to_ip       :: integer(),
-  to_port     :: integer(),
-  dst_ip      :: integer(),
-  dst_port    :: integer()
-  }).
+-record(ip_vs_conn, {
+    protocol    :: protocol(),
+    from_ip     :: integer(),
+    from_port   :: integer(),
+    to_ip       :: integer(),
+    to_port     :: integer(),
+    dst_ip      :: integer(),
+    dst_port    :: integer()
+    }).
 

@@ -85,12 +85,12 @@ test_update(_Config) ->
     Start1 = erlang:monotonic_time(micro_seconds),
     Map = ip_vs_conn_map:update(maps:new(), Conns), 
     End1 = erlang:monotonic_time(micro_seconds),
-    ct:pal("time to parse ~p", [End1 - Start1]),
+    ct:pal("time to update ~p", [End1 - Start1]),
 
     Start2 = erlang:monotonic_time(micro_seconds),
     Map2 = ip_vs_conn_map:update(maps:new(), Conns), 
     End2 = erlang:monotonic_time(micro_seconds),
-    ct:pal("time to parse ~p", [End2 - Start2]),
+    ct:pal("time to update ~p", [End2 - Start2]),
     Map = Map2,
     ok.
 
