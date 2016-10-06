@@ -11,18 +11,13 @@
 
 -include("include/ip_vs_conn.hrl").
 
--export([update/2]).
+-export([update/3]).
 
-update(Map, Conns) ->
-    NewMap = lists:foldl(fun(Conn, Acc) ->
-                              update_map(Map, Conn, Acc)
-                          end,
-                          maps:new(), Conns),
-    NewMap.
-
-update_map(Syns, Conn, Acc) ->
-    Current = maps:get(Conn, Syns, badkey),
-    update_conn(Conn, Acc, Current).
+%% update the map with new connection data
+-spec(update(maps:map() -> #ip_vs_conn_state{} -> maps:new()) -> maps:new()).
+update(Original, Conn, Updated) ->
+    Current = maps:get(Conn, Original, badkey),
+    update_conn(Conn, Updated, Current).
 
 %% new connection
 update_conn(#ip_vs_conn_state{connection = Conn, tcp_state = syn_recv}, Acc, badkey) ->
