@@ -12,7 +12,7 @@
 
 -record(ip_vs_conn_state, {
     connection  :: binary(),
-    tcp_state   :: tcp_state(),
+    tcp_state   :: tcp_state()
     }).
 
 -record(ip_vs_conn, {

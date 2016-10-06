@@ -21,24 +21,16 @@ update(Map, Conns) ->
     NewMap.
 
 update_map(Syns, Conn, Acc) ->
-    Current = maps:get(tcp_conn(Conn), Syns, badkey),
+    Current = maps:get(Conn, Syns, badkey),
     update_conn(Conn, Acc, Current).
 
 %% new connection
-update_conn(Conn = #ip_vs_conn{tcp_state = syn_recv}, Acc, badkey) ->
-    maps:put(tcp_conn(Conn), erlang:monotonic_time(seconds), Acc);
+update_conn(#ip_vs_conn_state{connection = Conn, tcp_state = syn_recv}, Acc, badkey) ->
+    maps:put(Conn, erlang:monotonic_time(seconds), Acc);
 
 %% skip connections in the other state
 update_conn(_Conn, Acc, badkey) -> Acc;
 
 %% old connection still in syn_recv state
-update_conn(Conn = #ip_vs_conn{tcp_state = syn_recv}, Acc, Start) ->
-    maps:put(tcp_conn(Conn), Start, Acc).
-
-tcp_conn(Conn) ->
-    #tcp_conn{from_ip   = Conn#ip_vs_conn.from_ip,
-              from_port = Conn#ip_vs_conn.from_port,
-              to_ip     = Conn#ip_vs_conn.to_ip,
-              to_port   = Conn#ip_vs_conn.to_port,
-              dst_ip    = Conn#ip_vs_conn.dst_ip,
-              dst_port  = Conn#ip_vs_conn.dst_port}.
+update_conn(#ip_vs_conn_state{connection = Conn, tcp_state = syn_recv}, Acc, Start) ->
+    maps:put(Conn, Start, Acc).

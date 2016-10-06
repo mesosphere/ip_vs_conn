@@ -9,14 +9,14 @@
 -module(ip_vs_conn).
 -include_lib("include/ip_vs_conn.hrl").
 -export([fold/3,
-         parse_conn/1,
+         parse_conn/1
         ]).
 
 %% Fold over the proc file for connections in SYN_RECV state
--spec(fold(fun(#ip_vs_conn{}, term()) -> term(), term(), string()) -> term()).
+%% -spec(fold(fun(#ip_vs_conn{}, term()) -> term(), term(), string()) -> term()).
 fold(Func, ZZ, Filepath) -> 
     file_fold(
-      fun(Line, ZZ) syn_recv_line(Func, LIne, ZZ) end, ZZ, 
+      fun(Line, Acc) -> syn_recv_line(Func, Line, Acc) end, ZZ, 
       file:open(Filepath, [read, binary, raw, {read_ahead, 1024*64}])).
 
 file_fold(Func, Z, {ok, Fd}) -> file_fold_line(Func, Z, Fd, file:read_line(Fd));
@@ -32,10 +32,9 @@ syn_recv_line(Func, Line, ZZ) ->
     end.
 
 %% matched data
-syn_recv(<<Connection:46/bytes,"SYN_RECV",_Rest/binary>> = Data) -> 
-    [#ip_vs_conn_state{ data = Connection,
-                      , tcp_state = syn_recv}].
-
+syn_recv(<<Connection:46/bytes,"SYN_RECV",_Rest/binary>>) -> 
+    [#ip_vs_conn_state{ connection = Connection,
+                        tcp_state = syn_recv}];
 syn_recv(_) -> [].
 
 parse_conn(<<Pro:3/bytes,$\s,
@@ -44,15 +43,14 @@ parse_conn(<<Pro:3/bytes,$\s,
              ToIP:8/bytes,$\s,
              TPrt:4/bytes,$\s,
              DestIP:8/bytes,$\s,
-             DPrt:4/bytes,$\s) ->
-    [#ip_vs_conn{ protocol =  to_protocol(Pro),
-                  from_ip = hex_str_to_int(FromIP),
-                  from_port = hex_str_to_int(FPrt),
-                  to_ip = hex_str_to_int(ToIP),
-                  to_port = hex_str_to_int(TPrt),
-                  dst_ip = hex_str_to_int(DestIP),
-                  dst_port = hex_str_to_int(DPrt),
-                  }].
+             DPrt:4/bytes,$\s>>) ->
+    #ip_vs_conn{ protocol =  to_protocol(Pro),
+                 from_ip = hex_str_to_int(FromIP),
+                 from_port = hex_str_to_int(FPrt),
+                 to_ip = hex_str_to_int(ToIP),
+                 to_port = hex_str_to_int(TPrt),
+                 dst_ip = hex_str_to_int(DestIP),
+                 dst_port = hex_str_to_int(DPrt)}.
 
 to_protocol(<<"TCP">>) -> tcp;
 to_protocol(<<"UDP">>) -> udp.
@@ -88,7 +86,7 @@ parse_conn_line_test_() ->
                         dst_ip = 167792566,
                         dst_port = 8081
                       },
-    [?_assertEqual([{ip_vs_conn_state, BConn, syn_recv}], syn_recv(Str))],
+    [{ip_vs_conn_state, BConn, syn_recv}] = syn_recv(Str),
     [?_assertEqual(Conn, parse_conn(BConn))].
     
 
@@ -102,7 +100,7 @@ parse_conn_line2_test_() ->
                         dst_ip = 167792566,
                         dst_port = 8081
                       },
-    [?_assertEqual([{ip_vs_conn_state, BConn, syn_recv}], syn_recv(Str))],
+    [{ip_vs_conn_state, BConn, syn_recv}] = syn_recv(Str),
     [?_assertEqual(Conn, parse_conn(BConn))].
 
 parse_conn_line3_test_() ->
@@ -115,7 +113,7 @@ parse_conn_line3_test_() ->
                         dst_ip = 167792566,
                         dst_port = 8081
                       },
-    [?_assertEqual([{ip_vs_conn_state, BConn, syn_recv}], syn_recv(Str))],
+    [{ip_vs_conn_state, BConn, syn_recv}] = syn_recv(Str),
     [?_assertEqual(Conn, parse_conn(BConn))].
 
 
@@ -140,10 +138,6 @@ to_tcp_state_test_() ->
 hex_str_to_int_test_() ->
     [?_assertEqual(8081, hex_str_to_int(<<"1f91">>)),
      ?_assertEqual(8080, hex_str_to_int(<<"1f90">>))].
-
-dec_str_to_int_test_() ->
-    [?_assertEqual(57, to_expires(<<"57">>)),
-     ?_assertEqual(8, to_expires(<<" 8">>))].
 
 -endif.
 
