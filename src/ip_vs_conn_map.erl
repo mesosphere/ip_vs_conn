@@ -25,6 +25,6 @@ update_conn(State, Conn, Acc, Start = #ip_vs_conn_status{tcp_state = State}) ->
 
 %% new connection or new state
 update_conn(State, Conn, Acc, _Start) ->
-    Now = erlang:monotonic_time(seconds),
-    Status = #ip_vs_conn_status{time = Now, tcp_state = State},
+    Now = erlang:monotonic_time(nano_seconds),
+    Status = #ip_vs_conn_status{time_ns = Now, tcp_state = State},
     maps:put(Conn, Status, Acc).

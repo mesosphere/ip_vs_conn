@@ -25,10 +25,10 @@
     dst_port    :: integer()
     }).
 
--type monotonic_time() :: integer().
+-type monotonic_time_ns() :: integer().
 
 -record(ip_vs_conn_status, {
-    time        :: monotonic_time(),
+    time_ns     :: monotonic_time_ns(),
     tcp_state   :: tcp_state()
     }).
 
