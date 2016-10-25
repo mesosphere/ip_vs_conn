@@ -25,7 +25,7 @@ test:
   post:
     - ./rebar3 covertool generate
     - sudo pip install codecov
-    - codecov -X gcov -f _build/test/covertool/tcp_metrics.covertool.xml
+    - codecov -X gcov -f _build/test/covertool/ip_vs_conn.covertool.xml --token=$CODECOV_TOKEN
     - mkdir -p $CIRCLE_TEST_REPORTS/
     - mkdir -p $CIRCLE_ARTIFACTS
     - cp -r _build/test $CIRCLE_TEST_REPORTS
