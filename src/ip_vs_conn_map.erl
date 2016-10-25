@@ -14,15 +14,17 @@
 -export([update/3]).
 
 %% update the map with new connection data
--spec(update(maps:map(), #ip_vs_conn_state{}, maps:map()) -> maps:map()).
-update(Original, #ip_vs_conn_state{connection = Conn, tcp_state = syn_recv}, Updated) ->
+-spec(update(conn_map(), #ip_vs_conn_state{}, conn_map()) -> conn_map()).
+update(Original, #ip_vs_conn_state{connection = Conn, tcp_state = State}, Updated) ->
     Current = maps:get(Conn, Original, badkey),
-    update_conn(Conn, Updated, Current).
+    update_conn(State, Conn, Updated, Current).
 
-%% new connection
-update_conn(Conn, Acc, badkey) ->
-    maps:put(Conn, erlang:monotonic_time(seconds), Acc);
+%% connection still in the same state
+update_conn(State, Conn, Acc, Start = #ip_vs_conn_status{tcp_state = State}) ->
+    maps:put(Conn, Start, Acc);
 
-%% old connection still in syn_recv state
-update_conn(Conn, Acc, Start) ->
-    maps:put(Conn, Start, Acc).
+%% new connection or new state
+update_conn(State, Conn, Acc, _Start) ->
+    Now = erlang:monotonic_time(seconds),
+    Status = #ip_vs_conn_status{time = Now, tcp_state = State},
+    maps:put(Conn, Status, Acc).
