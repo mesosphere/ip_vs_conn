@@ -25,3 +25,11 @@
     dst_port    :: integer()
     }).
 
+-type monotonic_time() :: integer().
+
+-record(ip_vs_conn_status, {
+    time        :: monotonic_time(),
+    tcp_state   :: tcp_state()
+    }).
+
+-type conn_map() :: #{ #ip_vs_conn{} => #ip_vs_conn_status{} }.

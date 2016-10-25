@@ -12,11 +12,12 @@
          parse/1
         ]).
 
-%% Fold over the proc file for connections in SYN_RECV state
+%% Fold over the proc file for connections
+%% only parses SYN_RECV and ESTABLISHED connections
 -spec(fold(fun((#ip_vs_conn_state{}, term()) -> term()), term(), string()) -> term()).
 fold(Func, ZZ, Filepath) -> 
     file_fold(
-      fun(Line, Acc) -> syn_recv_line(Func, Line, Acc) end, ZZ, 
+      fun(Line, Acc) -> recv_line(Func, Line, Acc) end, ZZ, 
       file:open(Filepath, [read, binary, raw, {read_ahead, 1024*64}])).
 
 %% parse connection data 
@@ -43,17 +44,21 @@ file_fold(_, Z, _) -> Z.
 file_fold_line(Func, Z, Fd, {ok, Data}) -> file_fold(Func, Func(Data, Z), {ok, Fd});
 file_fold_line(_, Z, _, _) -> Z.
 
-syn_recv_line(Func, Line, ZZ) ->
-    case syn_recv(Line) of
+recv_line(Func, Line, ZZ) ->
+    case recv(Line) of
         [Syn] -> Func(Syn, ZZ);
         _ -> ZZ
     end.
 
 %% matched data
-syn_recv(<<Connection:46/bytes,"SYN_RECV",_Rest/binary>>) -> 
+recv(<<Connection:46/bytes,"SYN_RECV",_Rest/binary>>) -> 
     [#ip_vs_conn_state{ connection = Connection,
                         tcp_state = syn_recv}];
-syn_recv(_) -> [].
+
+recv(<<Connection:46/bytes,"ESTABLISHED",_Rest/binary>>) -> 
+    [#ip_vs_conn_state{ connection = Connection,
+                        tcp_state = established}];
+recv(_) -> [].
 
 to_protocol(<<"TCP">>) -> tcp;
 to_protocol(<<"UDP">>) -> udp.
@@ -65,7 +70,7 @@ hex_str_to_int(Str) -> erlang:binary_to_integer(Str, 16).
 
 parse_first_line_test_() ->
     Str = <<"Pro FromIP   FPrt ToIP     TPrt DestIP   DPrt State       Expires PEName PEData\n">>,
-    [?_assertEqual([], syn_recv(Str))].
+    [?_assertEqual([], recv(Str))].
 
 parse_conn_line_test_() ->
     Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYN_RECV         57\n">>,
@@ -77,7 +82,7 @@ parse_conn_line_test_() ->
                         dst_ip = 167792566,
                         dst_port = 8081
                       },
-    [{ip_vs_conn_state, BConn, syn_recv}] = syn_recv(Str),
+    [{ip_vs_conn_state, BConn, syn_recv}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
     
 
@@ -91,8 +96,22 @@ parse_conn_line2_test_() ->
                         dst_ip = 167792566,
                         dst_port = 8081
                       },
-    [{ip_vs_conn_state, BConn, syn_recv}] = syn_recv(Str),
+    [{ip_vs_conn_state, BConn, syn_recv}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
+
+parse_conn_established2_test_() ->
+    Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 ESTABLISHED     997\n">>,
+    Conn = #ip_vs_conn{ protocol =  tcp,
+                        from_ip = 167792566,
+                        from_port = 69,
+                        to_ip = 167792566,
+                        to_port = 8080,
+                        dst_ip = 167792566,
+                        dst_port = 8081
+                      },
+    [{ip_vs_conn_state, BConn, established}] = recv(Str),
+    [?_assertEqual(Conn, parse(BConn))].
+
 
 parse_conn_line3_test_() ->
     Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYN_RECV          7 foo bar\n">>,
@@ -104,7 +123,20 @@ parse_conn_line3_test_() ->
                         dst_ip = 167792566,
                         dst_port = 8081
                       },
-    [{ip_vs_conn_state, BConn, syn_recv}] = syn_recv(Str),
+    [{ip_vs_conn_state, BConn, syn_recv}] = recv(Str),
+    [?_assertEqual(Conn, parse(BConn))].
+
+parse_conn_established4_test_() ->
+    Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 ESTABLISHED       7 foo bar\n">>,
+    Conn = #ip_vs_conn{ protocol =  tcp,
+                        from_ip = 167792566,
+                        from_port = 69,
+                        to_ip = 167792566,
+                        to_port = 8080,
+                        dst_ip = 167792566,
+                        dst_port = 8081
+                      },
+    [{ip_vs_conn_state, BConn, established}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
 
 
