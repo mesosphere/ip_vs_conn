@@ -68,19 +68,23 @@ test_server(_Config) ->
 test_server2(_Config) ->
     timer:sleep(2000),
     {ok, Map} = ip_vs_conn_monitor:get_dropped(),
-    Keys = [{ip_vs_conn, tcp, 167792566,69,167792566,8080,167792566,8081}],
+    Keys = [{ip_vs_conn, tcp, 167792566, 69, 167792566, 8080, 167792566, 8081},
+            {ip_vs_conn, tcp, 167792566, 62061, 167792566, 8080, 167792566, 8081}],
     Keys = lists:map(fun(Key) -> ip_vs_conn:parse(Key) end, maps:keys(Map)),
+    [{ip_vs_conn_status, _, syn_recv}, {ip_vs_conn_status, _, established}] = maps:values(Map),
     ok.
 
 test_server_wait(_Config) ->
     timer:sleep(2000),
     {ok, Map} = ip_vs_conn_monitor:get_dropped(),
-    Keys = [{ip_vs_conn, tcp, 167792566,69,167792566,8080,167792566,8081}],
+    Keys = [{ip_vs_conn,tcp,167792566,69,167792566,8080,167792566, 8081},
+            {ip_vs_conn,tcp,167792566,62061,167792566,8080,167792566, 8081}],
     Keys = lists:map(fun(Key) -> ip_vs_conn:parse(Key) end, maps:keys(Map)),
     timer:sleep(2000),
     {ok, Map2} = ip_vs_conn_monitor:get_dropped(),
     Keys = lists:map(fun(Key) -> ip_vs_conn:parse(Key) end, maps:keys(Map2)),
     Map = Map2,
+    [{ip_vs_conn_status, _, syn_recv}, {ip_vs_conn_status, _, established}] = maps:values(Map),
     ok.
 
 test_update(_Config) ->
