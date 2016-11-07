@@ -51,13 +51,36 @@ recv_line(Func, Line, ZZ) ->
     end.
 
 %% matched data
-recv(<<Connection:46/bytes,"SYN_RECV",_Rest/binary>>) -> 
-    [#ip_vs_conn_state{ connection = Connection,
-                        tcp_state = syn_recv}];
-
 recv(<<Connection:46/bytes,"ESTABLISHED",_Rest/binary>>) -> 
     [#ip_vs_conn_state{ connection = Connection,
                         tcp_state = established}];
+recv(<<Connection:46/bytes,"SYN_SENT",_Rest/binary>>) -> 
+    [#ip_vs_conn_state{ connection = Connection,
+                        tcp_state = syn_sent}];
+recv(<<Connection:46/bytes,"SYN_RECV",_Rest/binary>>) -> 
+    [#ip_vs_conn_state{ connection = Connection,
+                        tcp_state = syn_recv}];
+recv(<<Connection:46/bytes,"FIN_WAIT",_Rest/binary>>) -> 
+    [#ip_vs_conn_state{ connection = Connection,
+                        tcp_state = fin_wait}];
+recv(<<Connection:46/bytes,"TIME_WAIT",_Rest/binary>>) -> 
+    [#ip_vs_conn_state{ connection = Connection,
+                        tcp_state = time_wait}];
+recv(<<Connection:46/bytes,"CLOSE_WAIT",_Rest/binary>>) -> 
+    [#ip_vs_conn_state{ connection = Connection,
+                        tcp_state = close_wait}];
+recv(<<Connection:46/bytes,"CLOSE",_Rest/binary>>) -> 
+    [#ip_vs_conn_state{ connection = Connection,
+                        tcp_state = close}];
+recv(<<Connection:46/bytes,"LAST_ACK",_Rest/binary>>) -> 
+    [#ip_vs_conn_state{ connection = Connection,
+                        tcp_state = last_ack}];
+recv(<<Connection:46/bytes,"LISTEN",_Rest/binary>>) -> 
+    [#ip_vs_conn_state{ connection = Connection,
+                        tcp_state = listen}];
+recv(<<Connection:46/bytes,"SYNACK",_Rest/binary>>) -> 
+    [#ip_vs_conn_state{ connection = Connection,
+                        tcp_state = synack}];
 recv(_) -> [].
 
 to_protocol(<<"TCP">>) -> tcp;
@@ -138,6 +161,72 @@ parse_conn_established4_test_() ->
                       },
     [{ip_vs_conn_state, BConn, established}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
+
+parse_conn_close_wait_test_() ->
+    Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 CLOSE_WAIT      999 foo bar\n">>,
+    Conn = #ip_vs_conn{ protocol =  tcp,
+                        from_ip = 167792566,
+                        from_port = 69,
+                        to_ip = 167792566,
+                        to_port = 8080,
+                        dst_ip = 167792566,
+                        dst_port = 8081
+                      },
+    [{ip_vs_conn_state, BConn, close_wait}] = recv(Str),
+    [?_assertEqual(Conn, parse(BConn))].
+
+parse_conn_last_ack_test_() ->
+    Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 LAST_ACK        999 foo bar\n">>,
+    Conn = #ip_vs_conn{ protocol =  tcp,
+                        from_ip = 167792566,
+                        from_port = 69,
+                        to_ip = 167792566,
+                        to_port = 8080,
+                        dst_ip = 167792566,
+                        dst_port = 8081
+                      },
+    [{ip_vs_conn_state, BConn, last_ack}] = recv(Str),
+    [?_assertEqual(Conn, parse(BConn))].
+
+parse_conn_listen_test_() ->
+    Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 LISTEN          999 foo bar\n">>,
+    Conn = #ip_vs_conn{ protocol =  tcp,
+                        from_ip = 167792566,
+                        from_port = 69,
+                        to_ip = 167792566,
+                        to_port = 8080,
+                        dst_ip = 167792566,
+                        dst_port = 8081
+                      },
+    [{ip_vs_conn_state, BConn, listen}] = recv(Str),
+    [?_assertEqual(Conn, parse(BConn))].
+
+parse_conn_synack_test_() ->
+    Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYNACK          999 foo bar\n">>,
+    Conn = #ip_vs_conn{ protocol =  tcp,
+                        from_ip = 167792566,
+                        from_port = 69,
+                        to_ip = 167792566,
+                        to_port = 8080,
+                        dst_ip = 167792566,
+                        dst_port = 8081
+                      },
+    [{ip_vs_conn_state, BConn, synack}] = recv(Str),
+    [?_assertEqual(Conn, parse(BConn))].
+
+parse_conn_syn_sent_test() ->
+    Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYN_SENT        999 foo bar\n">>,
+    Conn = #ip_vs_conn{ protocol =  tcp,
+                        from_ip = 167792566,
+                        from_port = 69,
+                        to_ip = 167792566,
+                        to_port = 8080,
+                        dst_ip = 167792566,
+                        dst_port = 8081
+                      },
+    [{ip_vs_conn_state, BConn, syn_sent}] = recv(Str),
+    [?_assertEqual(Conn, parse(BConn))].
+
 
 
 to_protocol_test_() ->
