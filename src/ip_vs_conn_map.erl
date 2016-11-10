@@ -19,12 +19,36 @@ update(Original, #ip_vs_conn_state{connection = Conn, tcp_state = State}, Update
     Current = maps:get(Conn, Original, badkey),
     update_conn(State, Conn, Updated, Current).
 
-%% connection still in the same state
-update_conn(State, Conn, Acc, Start = #ip_vs_conn_status{tcp_state = State}) ->
-    maps:put(Conn, Start, Acc);
+%% old connection
+update_conn(State, Conn, Acc, #ip_vs_conn_status{time_ns = Time}) ->
+    Status = #ip_vs_conn_status{time_ns = Time, tcp_state = State},
+    maps:put(Conn, Status, Acc);
 
-%% new connection or new state
-update_conn(State, Conn, Acc, _Start) ->
+%% new connection
+update_conn(State, Conn, Acc, badkey) ->
     Now = erlang:monotonic_time(nano_seconds),
     Status = #ip_vs_conn_status{time_ns = Now, tcp_state = State},
     maps:put(Conn, Status, Acc).
+
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+
+new_conn_test_() ->
+    Old = #{},
+    Conn = <<"foobar">>,
+    ConnState = #ip_vs_conn_state{connection = Conn, tcp_state = established},
+    New = update(Old, ConnState, #{}),
+    [?_assertEqual([Conn], maps:keys(New)),
+     ?_assertMatch([#ip_vs_conn_status{time_ns = _, tcp_state = established}], maps:values(New))].
+
+old_conn_test_() ->
+    Conn = <<"foobar">>,
+    Syn = #ip_vs_conn_state{connection = Conn, tcp_state = syn_recv},
+    Close = #ip_vs_conn_state{connection = Conn, tcp_state = close},
+    M0 = update(#{}, Syn, #{}),
+    M1 = update(M0, Close, #{}),
+    [#ip_vs_conn_status{time_ns = T0, tcp_state = syn_recv}] = maps:values(M0),
+    [#ip_vs_conn_status{time_ns = T1, tcp_state = close}] = maps:values(M1),
+    [?_assertEqual(T1, T0)].
+
+-endif.
