@@ -32,4 +32,4 @@
     tcp_state   :: tcp_state()
     }).
 
--type conn_map() :: #{ #ip_vs_conn{} => #ip_vs_conn_status{} }.
+-type conn_map() :: #{ binary() => #ip_vs_conn_status{} }.
