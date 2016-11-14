@@ -20,9 +20,9 @@ parse(Conn, List) ->
 
 test_parse(_Config) ->
     Proc = ip_vs_conn_config:proc_file(),
-    Ret = [{ip_vs_conn,tcp,167792566,47808,167792566,8080,167792566,8081, 59},
-           {ip_vs_conn,tcp,167792566,62061,167792566,8080,167792566,8081, 58},
-           {ip_vs_conn,tcp,167792566,69,167792566,8080,167792566,8081, 57}],
+    Ret = [{ip_vs_conn,tcp,syn_recv,167792566,47808,167792566,8080,167792566,8081, 59},
+           {ip_vs_conn,tcp,syn_recv,167792566,62061,167792566,8080,167792566,8081, 58},
+           {ip_vs_conn,tcp,syn_recv,167792566,69,167792566,8080,167792566,8081, 57}],
     Ret = ip_vs_conn:fold(fun parse/2, [], Proc),
     ok.
 
@@ -59,19 +59,20 @@ test_gen_server(_Config) ->
 test_server(_Config) ->
     timer:sleep(2000),
     {ok, Map} = ip_vs_conn_monitor:get_connections(),
-    Keys = [{ip_vs_conn, tcp, 167792566,69,167792566,8080,167792566,8081, 57},
-            {ip_vs_conn, tcp, 167792566,47808,167792566,8080,167792566,8081, 59},
-            {ip_vs_conn, tcp, 167792566,62061,167792566,8080,167792566,8081, 58}],
-    Keys = lists:map(fun ip_vs_conn:parse/1, maps:to_list(Map)),
+    Keys = lists:sort(
+             [{ip_vs_conn, tcp, syn_recv, 167792566,47808,167792566,8080,167792566,8081, 59},
+              {ip_vs_conn, tcp, syn_recv, 167792566,62061,167792566,8080,167792566,8081, 58},
+              {ip_vs_conn, tcp, syn_recv, 167792566,69,167792566,8080,167792566,8081, 57}]),
+    Keys = lists:sort(lists:map(fun ip_vs_conn:parse/1, maps:to_list(Map))),
     ok.
 
 test_server2(_Config) ->
     timer:sleep(2000),
     {ok, Map} = ip_vs_conn_monitor:get_connections(),
-    Keys = [{ip_vs_conn, tcp, 167792566, 69, 167792566, 8080, 167792566, 8081, 57},
-            {ip_vs_conn, tcp, 167792566, 47808, 167792566, 8080, 167792566, 8081, 59},
-            {ip_vs_conn, tcp, 167792566, 47809, 167792566, 8080, 167792566, 8081, 59},
-            {ip_vs_conn, tcp, 167792566, 62061, 167792566, 8080, 167792566, 8081, 58}],
+    Keys = [{ip_vs_conn, tcp, syn_recv, 167792566, 69, 167792566, 8080, 167792566, 8081, 57},
+            {ip_vs_conn, tcp, fin_wait, 167792566, 47808, 167792566, 8080, 167792566, 8081, 59},
+            {ip_vs_conn, tcp, time_wait, 167792566, 47809, 167792566, 8080, 167792566, 8081, 59},
+            {ip_vs_conn, tcp, established, 167792566, 62061, 167792566, 8080, 167792566, 8081, 58}],
     Keys = lists:map(fun ip_vs_conn:parse/1, maps:to_list(Map)),
     Values = maps:values(Map),
     [{ip_vs_conn_status, _, syn_recv},
@@ -83,10 +84,10 @@ test_server2(_Config) ->
 test_server_wait(_Config) ->
     timer:sleep(2000),
     {ok, Map} = ip_vs_conn_monitor:get_connections(),
-    Keys = [{ip_vs_conn, tcp, 167792566, 69, 167792566, 8080, 167792566, 8081, 57},
-            {ip_vs_conn, tcp, 167792566, 47808, 167792566, 8080, 167792566, 8081, 59},
-            {ip_vs_conn, tcp, 167792566, 47809, 167792566, 8080, 167792566, 8081, 59},
-            {ip_vs_conn, tcp, 167792566, 62061, 167792566, 8080, 167792566, 8081, 58}],
+    Keys = [{ip_vs_conn, tcp, syn_recv, 167792566, 69, 167792566, 8080, 167792566, 8081, 57},
+            {ip_vs_conn, tcp, fin_wait, 167792566, 47808, 167792566, 8080, 167792566, 8081, 59},
+            {ip_vs_conn, tcp, time_wait, 167792566, 47809, 167792566, 8080, 167792566, 8081, 59},
+            {ip_vs_conn, tcp, established, 167792566, 62061, 167792566, 8080, 167792566, 8081, 58}],
     Keys = lists:map(fun ip_vs_conn:parse/1, maps:to_list(Map)),
     timer:sleep(2000),
     {ok, Map2} = ip_vs_conn_monitor:get_connections(),
