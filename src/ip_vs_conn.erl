@@ -21,22 +21,28 @@ fold(Func, ZZ, Filepath) ->
       file:open(Filepath, [read, binary, raw, {read_ahead, 1024*64}])).
 
 %% parse connection data 
--spec(parse(binary()) -> #ip_vs_conn{}).
-parse(<<Pro:3/bytes,$\s,
-        FromIP:8/bytes,$\s,
-        FPrt:4/bytes,$\s,
-        ToIP:8/bytes,$\s,
-        TPrt:4/bytes,$\s,
-        DestIP:8/bytes,$\s,
-        DPrt:4/bytes,$\s>>) ->
+-spec(parse(#ip_vs_conn_state{} | {connection(), #ip_vs_conn_status{}}) -> #ip_vs_conn{}).
+parse(#ip_vs_conn_state{
+         connection = <<Pro:3/bytes,$\s,
+                        FromIP:8/bytes,$\s,
+                        FPrt:4/bytes,$\s,
+                        ToIP:8/bytes,$\s,
+                        TPrt:4/bytes,$\s,
+                        DestIP:8/bytes,$\s,
+                        DPrt:4/bytes,$\s>>,
+          conn_state = Expires
+      }) ->
     #ip_vs_conn{ protocol =  to_protocol(Pro),
                  from_ip = hex_str_to_int(FromIP),
                  from_port = hex_str_to_int(FPrt),
                  to_ip = hex_str_to_int(ToIP),
                  to_port = hex_str_to_int(TPrt),
                  dst_ip = hex_str_to_int(DestIP),
-                 dst_port = hex_str_to_int(DPrt)}.
+                 dst_port = hex_str_to_int(DPrt),
+                 expires = expires(Expires)};
 
+parse({Conn,  #ip_vs_conn_status{ tcp_state = TcpState, conn_state = ConnState}}) ->
+    parse(#ip_vs_conn_state{connection = Conn, conn_state = ConnState, tcp_state = TcpState}).
 
 file_fold(Func, Z, {ok, Fd}) -> file_fold_line(Func, Z, Fd, file:read_line(Fd));
 file_fold(_, Z, _) -> Z.
@@ -51,35 +57,45 @@ recv_line(Func, Line, ZZ) ->
     end.
 
 %% matched data
-recv(<<Connection:46/bytes,"ESTABLISHED",_Rest/binary>>) -> 
+recv(<<Connection:46/bytes,"ESTABLISHED",Rest/binary>>) -> 
     [#ip_vs_conn_state{ connection = Connection,
+                        conn_state = Rest,
                         tcp_state = established}];
-recv(<<Connection:46/bytes,"SYN_SENT",_Rest/binary>>) -> 
+recv(<<Connection:46/bytes,"SYN_SENT",Rest/binary>>) -> 
     [#ip_vs_conn_state{ connection = Connection,
+                        conn_state = Rest,
                         tcp_state = syn_sent}];
-recv(<<Connection:46/bytes,"SYN_RECV",_Rest/binary>>) -> 
+recv(<<Connection:46/bytes,"SYN_RECV",Rest/binary>>) -> 
     [#ip_vs_conn_state{ connection = Connection,
+                        conn_state = Rest,
                         tcp_state = syn_recv}];
-recv(<<Connection:46/bytes,"FIN_WAIT",_Rest/binary>>) -> 
+recv(<<Connection:46/bytes,"FIN_WAIT",Rest/binary>>) -> 
     [#ip_vs_conn_state{ connection = Connection,
+                        conn_state = Rest,
                         tcp_state = fin_wait}];
-recv(<<Connection:46/bytes,"TIME_WAIT",_Rest/binary>>) -> 
+recv(<<Connection:46/bytes,"TIME_WAIT",Rest/binary>>) -> 
     [#ip_vs_conn_state{ connection = Connection,
+                        conn_state = Rest,
                         tcp_state = time_wait}];
-recv(<<Connection:46/bytes,"CLOSE_WAIT",_Rest/binary>>) -> 
+recv(<<Connection:46/bytes,"CLOSE_WAIT",Rest/binary>>) -> 
     [#ip_vs_conn_state{ connection = Connection,
+                        conn_state = Rest,
                         tcp_state = close_wait}];
-recv(<<Connection:46/bytes,"CLOSE",_Rest/binary>>) -> 
+recv(<<Connection:46/bytes,"CLOSE",Rest/binary>>) -> 
     [#ip_vs_conn_state{ connection = Connection,
+                        conn_state = Rest,
                         tcp_state = close}];
-recv(<<Connection:46/bytes,"LAST_ACK",_Rest/binary>>) -> 
+recv(<<Connection:46/bytes,"LAST_ACK",Rest/binary>>) -> 
     [#ip_vs_conn_state{ connection = Connection,
+                        conn_state = Rest,
                         tcp_state = last_ack}];
-recv(<<Connection:46/bytes,"LISTEN",_Rest/binary>>) -> 
+recv(<<Connection:46/bytes,"LISTEN",Rest/binary>>) -> 
     [#ip_vs_conn_state{ connection = Connection,
+                        conn_state = Rest,
                         tcp_state = listen}];
-recv(<<Connection:46/bytes,"SYNACK",_Rest/binary>>) -> 
+recv(<<Connection:46/bytes,"SYNACK",Rest/binary>>) -> 
     [#ip_vs_conn_state{ connection = Connection,
+                        conn_state = Rest,
                         tcp_state = synack}];
 recv(_) -> [].
 
@@ -88,8 +104,30 @@ to_protocol(<<"UDP">>) -> udp.
 
 hex_str_to_int(Str) -> erlang:binary_to_integer(Str, 16).
 
+expires(<<$\s,Rest/binary>>) -> expires(Rest);
+expires(<<Expires:1/bytes,$\s,_Rest/binary>>) ->    erlang:binary_to_integer(Expires, 10);
+expires(<<Expires:1/bytes,$\n>>) ->                 erlang:binary_to_integer(Expires, 10);
+expires(<<Expires:2/bytes,$\s,_Rest/binary>>) ->    erlang:binary_to_integer(Expires, 10);
+expires(<<Expires:2/bytes,$\n>>) ->                 erlang:binary_to_integer(Expires, 10);
+expires(<<Expires:3/bytes,$\s,_Rest/binary>>) ->    erlang:binary_to_integer(Expires, 10);
+expires(<<Expires:3/bytes,$\n>>) ->                 erlang:binary_to_integer(Expires, 10);
+expires(_) -> 9999.
+
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+expires_test_() ->
+    [?_assertEqual(9999, expires(<<>>)),
+     ?_assertEqual(9999, expires(<<"\n">>)),
+     ?_assertEqual(9999, expires(<<" ">>)),
+     ?_assertEqual(1, expires(<<" 1\n">>)),
+     ?_assertEqual(1, expires(<<" 1 ">>)),
+     ?_assertEqual(11, expires(<<" 11\n">>)),
+     ?_assertEqual(11, expires(<<" 11 ">>)),
+     ?_assertEqual(111, expires(<<" 111\n">>)),
+     ?_assertEqual(111, expires(<<" 111 ">>)),
+     ?_assertEqual(111, expires(<<"      111    ">>)),
+     ?_assertEqual(111, expires(<<"      111    fdsafadsfs\n">>))
+    ].
 
 parse_first_line_test_() ->
     Str = <<"Pro FromIP   FPrt ToIP     TPrt DestIP   DPrt State       Expires PEName PEData\n">>,
@@ -103,12 +141,12 @@ parse_conn_line_test_() ->
                         to_ip = 167792566,
                         to_port = 8080,
                         dst_ip = 167792566,
-                        dst_port = 8081
+                        dst_port = 8081,
+                        expires = 57
                       },
-    [{ip_vs_conn_state, BConn, syn_recv}] = recv(Str),
+    [BConn = #ip_vs_conn_state{tcp_state = syn_recv}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
     
-
 parse_conn_line2_test_() ->
     Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYN_RECV          7\n">>,
     Conn = #ip_vs_conn{ protocol =  tcp,
@@ -117,9 +155,10 @@ parse_conn_line2_test_() ->
                         to_ip = 167792566,
                         to_port = 8080,
                         dst_ip = 167792566,
-                        dst_port = 8081
+                        dst_port = 8081,
+                        expires = 7
                       },
-    [{ip_vs_conn_state, BConn, syn_recv}] = recv(Str),
+    [BConn = #ip_vs_conn_state{tcp_state = syn_recv}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
 
 parse_conn_established2_test_() ->
@@ -130,9 +169,10 @@ parse_conn_established2_test_() ->
                         to_ip = 167792566,
                         to_port = 8080,
                         dst_ip = 167792566,
-                        dst_port = 8081
+                        dst_port = 8081,
+                        expires = 997
                       },
-    [{ip_vs_conn_state, BConn, established}] = recv(Str),
+    [BConn = #ip_vs_conn_state{tcp_state = established}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
 
 
@@ -144,9 +184,10 @@ parse_conn_line3_test_() ->
                         to_ip = 167792566,
                         to_port = 8080,
                         dst_ip = 167792566,
-                        dst_port = 8081
+                        dst_port = 8081,
+                        expires = 7
                       },
-    [{ip_vs_conn_state, BConn, syn_recv}] = recv(Str),
+    [BConn = #ip_vs_conn_state{tcp_state = syn_recv}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
 
 parse_conn_established4_test_() ->
@@ -157,9 +198,10 @@ parse_conn_established4_test_() ->
                         to_ip = 167792566,
                         to_port = 8080,
                         dst_ip = 167792566,
-                        dst_port = 8081
+                        dst_port = 8081,
+                        expires = 7
                       },
-    [{ip_vs_conn_state, BConn, established}] = recv(Str),
+    [BConn = #ip_vs_conn_state{tcp_state = established}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
 
 parse_conn_close_wait_test_() ->
@@ -170,9 +212,10 @@ parse_conn_close_wait_test_() ->
                         to_ip = 167792566,
                         to_port = 8080,
                         dst_ip = 167792566,
-                        dst_port = 8081
+                        dst_port = 8081,
+                        expires = 999
                       },
-    [{ip_vs_conn_state, BConn, close_wait}] = recv(Str),
+    [BConn = #ip_vs_conn_state{tcp_state = close_wait}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
 
 parse_conn_last_ack_test_() ->
@@ -183,9 +226,10 @@ parse_conn_last_ack_test_() ->
                         to_ip = 167792566,
                         to_port = 8080,
                         dst_ip = 167792566,
-                        dst_port = 8081
+                        dst_port = 8081,
+                        expires = 999
                       },
-    [{ip_vs_conn_state, BConn, last_ack}] = recv(Str),
+    [BConn = #ip_vs_conn_state{tcp_state = last_ack}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
 
 parse_conn_listen_test_() ->
@@ -196,9 +240,10 @@ parse_conn_listen_test_() ->
                         to_ip = 167792566,
                         to_port = 8080,
                         dst_ip = 167792566,
-                        dst_port = 8081
+                        dst_port = 8081,
+                        expires = 999
                       },
-    [{ip_vs_conn_state, BConn, listen}] = recv(Str),
+    [BConn = #ip_vs_conn_state{tcp_state = listen}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
 
 parse_conn_synack_test_() ->
@@ -209,9 +254,10 @@ parse_conn_synack_test_() ->
                         to_ip = 167792566,
                         to_port = 8080,
                         dst_ip = 167792566,
-                        dst_port = 8081
+                        dst_port = 8081,
+                        expires = 999
                       },
-    [{ip_vs_conn_state, BConn, synack}] = recv(Str),
+    [BConn = #ip_vs_conn_state{tcp_state = synack}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
 
 parse_conn_syn_sent_test() ->
@@ -222,9 +268,10 @@ parse_conn_syn_sent_test() ->
                         to_ip = 167792566,
                         to_port = 8080,
                         dst_ip = 167792566,
-                        dst_port = 8081
+                        dst_port = 8081,
+                        expires = 999
                       },
-    [{ip_vs_conn_state, BConn, syn_sent}] = recv(Str),
+    [BConn = #ip_vs_conn_state{tcp_state = syn_sent}] = recv(Str),
     [?_assertEqual(Conn, parse(BConn))].
 
 
