@@ -30,9 +30,11 @@ parse(#ip_vs_conn_state{
                         TPrt:4/bytes,$\s,
                         DestIP:8/bytes,$\s,
                         DPrt:4/bytes,$\s>>,
-          conn_state = Expires
+          conn_state = Expires,
+          tcp_state = TcpStatus
       }) ->
     #ip_vs_conn{ protocol =  to_protocol(Pro),
+                 tcp_state = TcpStatus,
                  from_ip = hex_str_to_int(FromIP),
                  from_port = hex_str_to_int(FPrt),
                  to_ip = hex_str_to_int(ToIP),
@@ -136,6 +138,7 @@ parse_first_line_test_() ->
 parse_conn_line_test_() ->
     Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYN_RECV         57\n">>,
     Conn = #ip_vs_conn{ protocol =  tcp,
+                        tcp_state = syn_recv,
                         from_ip = 167792566,
                         from_port = 69,
                         to_ip = 167792566,
@@ -150,6 +153,7 @@ parse_conn_line_test_() ->
 parse_conn_line2_test_() ->
     Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYN_RECV          7\n">>,
     Conn = #ip_vs_conn{ protocol =  tcp,
+                        tcp_state = syn_recv,
                         from_ip = 167792566,
                         from_port = 69,
                         to_ip = 167792566,
@@ -164,6 +168,7 @@ parse_conn_line2_test_() ->
 parse_conn_established2_test_() ->
     Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 ESTABLISHED     997\n">>,
     Conn = #ip_vs_conn{ protocol =  tcp,
+                        tcp_state = established,
                         from_ip = 167792566,
                         from_port = 69,
                         to_ip = 167792566,
@@ -179,6 +184,7 @@ parse_conn_established2_test_() ->
 parse_conn_line3_test_() ->
     Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYN_RECV          7 foo bar\n">>,
     Conn = #ip_vs_conn{ protocol =  tcp,
+                        tcp_state = syn_recv,
                         from_ip = 167792566,
                         from_port = 69,
                         to_ip = 167792566,
@@ -193,6 +199,7 @@ parse_conn_line3_test_() ->
 parse_conn_established4_test_() ->
     Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 ESTABLISHED       7 foo bar\n">>,
     Conn = #ip_vs_conn{ protocol =  tcp,
+                        tcp_state = established,
                         from_ip = 167792566,
                         from_port = 69,
                         to_ip = 167792566,
@@ -207,6 +214,7 @@ parse_conn_established4_test_() ->
 parse_conn_close_wait_test_() ->
     Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 CLOSE_WAIT      999 foo bar\n">>,
     Conn = #ip_vs_conn{ protocol =  tcp,
+                        tcp_state = close_wait,
                         from_ip = 167792566,
                         from_port = 69,
                         to_ip = 167792566,
@@ -221,6 +229,7 @@ parse_conn_close_wait_test_() ->
 parse_conn_last_ack_test_() ->
     Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 LAST_ACK        999 foo bar\n">>,
     Conn = #ip_vs_conn{ protocol =  tcp,
+                        tcp_state = last_ack,
                         from_ip = 167792566,
                         from_port = 69,
                         to_ip = 167792566,
@@ -235,6 +244,7 @@ parse_conn_last_ack_test_() ->
 parse_conn_listen_test_() ->
     Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 LISTEN          999 foo bar\n">>,
     Conn = #ip_vs_conn{ protocol =  tcp,
+                        tcp_state = listen,
                         from_ip = 167792566,
                         from_port = 69,
                         to_ip = 167792566,
@@ -249,6 +259,7 @@ parse_conn_listen_test_() ->
 parse_conn_synack_test_() ->
     Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYNACK          999 foo bar\n">>,
     Conn = #ip_vs_conn{ protocol =  tcp,
+                        tcp_state = synack,
                         from_ip = 167792566,
                         from_port = 69,
                         to_ip = 167792566,
@@ -263,6 +274,7 @@ parse_conn_synack_test_() ->
 parse_conn_syn_sent_test() ->
     Str = <<"TCP 0A004FB6 0045 0A004FB6 1F90 0A004FB6 1F91 SYN_SENT        999 foo bar\n">>,
     Conn = #ip_vs_conn{ protocol =  tcp,
+                        tcp_state = syn_sent,
                         from_ip = 167792566,
                         from_port = 69,
                         to_ip = 167792566,

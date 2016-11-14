@@ -21,6 +21,7 @@
 
 -record(ip_vs_conn, {
     protocol    :: protocol(),
+    tcp_state   :: tcp_state(),
     from_ip     :: integer(),
     from_port   :: integer(),
     to_ip       :: integer(),
