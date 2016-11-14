@@ -10,8 +10,12 @@
 -type protocol() :: tcp | udp.
 -type tcp_state() :: none | established | syn_sent | syn_recv | fin_wait | time_wait | close | close_wait | last_ack | listen | synack.
 
+-type connection() :: binary().
+-type conn_state() :: binary().
+
 -record(ip_vs_conn_state, {
-    connection  :: binary(),
+    connection  :: connection(),
+    conn_state  :: conn_state(),
     tcp_state   :: tcp_state()
     }).
 
@@ -22,14 +26,15 @@
     to_ip       :: integer(),
     to_port     :: integer(),
     dst_ip      :: integer(),
-    dst_port    :: integer()
+    dst_port    :: integer(),
+    expires    :: integer() | 9999
     }).
 
 -type monotonic_time_ns() :: integer().
 
 -record(ip_vs_conn_status, {
-    time_ns     :: monotonic_time_ns(),
+    conn_state  :: conn_state(),
     tcp_state   :: tcp_state()
     }).
 
--type conn_map() :: #{ binary() => #ip_vs_conn_status{} }.
+-type conn_map() :: #{ connection() => #ip_vs_conn_status{} }.
