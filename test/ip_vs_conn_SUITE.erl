@@ -56,9 +56,16 @@ test_gen_server(_Config) ->
     sys:change_code(ip_vs_conn_monitor, random_old_vsn, ip_vs_conn_monitor, []),
     sys:resume(ip_vs_conn_monitor).
 
+get_connections() ->
+    ok = ip_vs_conn_monitor:get_connections(new_connections),
+    receive
+        {new_connections, New} ->
+            ct:pal("got ~p", [New]),
+            {ok, New}
+    end.
+
 test_server(_Config) ->
-    timer:sleep(2000),
-    {ok, Map} = ip_vs_conn_monitor:get_connections(),
+    {ok, Map} = get_connections(),
     Keys = lists:sort(
              [{ip_vs_conn, tcp, syn_recv, 167792566,47808,167792566,8080,167792566,8081, 59},
               {ip_vs_conn, tcp, syn_recv, 167792566,62061,167792566,8080,167792566,8081, 58},
@@ -67,8 +74,7 @@ test_server(_Config) ->
     ok.
 
 test_server2(_Config) ->
-    timer:sleep(2000),
-    {ok, Map} = ip_vs_conn_monitor:get_connections(),
+    {ok, Map} = get_connections(),
     Keys = [{ip_vs_conn, tcp, syn_recv, 167792566, 69, 167792566, 8080, 167792566, 8081, 57},
             {ip_vs_conn, tcp, fin_wait, 167792566, 47808, 167792566, 8080, 167792566, 8081, 59},
             {ip_vs_conn, tcp, time_wait, 167792566, 47809, 167792566, 8080, 167792566, 8081, 59},
@@ -82,15 +88,13 @@ test_server2(_Config) ->
     ok.
 
 test_server_wait(_Config) ->
-    timer:sleep(2000),
-    {ok, Map} = ip_vs_conn_monitor:get_connections(),
+    {ok, Map} = get_connections(),
     Keys = [{ip_vs_conn, tcp, syn_recv, 167792566, 69, 167792566, 8080, 167792566, 8081, 57},
             {ip_vs_conn, tcp, fin_wait, 167792566, 47808, 167792566, 8080, 167792566, 8081, 59},
             {ip_vs_conn, tcp, time_wait, 167792566, 47809, 167792566, 8080, 167792566, 8081, 59},
             {ip_vs_conn, tcp, established, 167792566, 62061, 167792566, 8080, 167792566, 8081, 58}],
     Keys = lists:map(fun ip_vs_conn:parse/1, maps:to_list(Map)),
-    timer:sleep(2000),
-    {ok, Map2} = ip_vs_conn_monitor:get_connections(),
+    {ok, Map2} = get_connections(),
     Keys = lists:map(fun ip_vs_conn:parse/1, maps:to_list(Map2)),
     Map = Map2,
     Values = maps:values(Map),

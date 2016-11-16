@@ -39,6 +39,9 @@ eunit:
 ct:
 	./rebar3 as test ct
 
+vct:
+	./rebar3 ct --readable=false
+
 cover:
 	./rebar3 as test cover
 

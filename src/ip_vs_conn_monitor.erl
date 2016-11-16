@@ -11,7 +11,7 @@
 
 -behaviour(gen_server).
 
--export([get_connections/0]).
+-export([get_connections/1]).
 -export([start_link/0]).
 
 -export([init/1,
@@ -24,9 +24,7 @@
 -include("include/ip_vs_conn.hrl").
 -define(SERVER, ?MODULE).
 
--record(state, {
-    syns = maps:new() %% all the connection that have seen a syn_recv
-    }).
+-record(state, {}).
 
 -spec(start_link() ->
     {ok, Pid :: pid()} | ignore | {error, Reason :: term()}).
@@ -38,7 +36,6 @@ start_link() ->
     {stop, Reason :: term()} | ignore).
 init([]) ->
     process_flag(trap_exit, true),
-    erlang:send_after(splay_ms(), self(), poll_proc),
     {ok, #state{}}.
 
 -spec(handle_call(Request :: term(), From :: {pid(), Tag :: term()},
@@ -49,8 +46,6 @@ init([]) ->
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_call(get_connections, _From, State) ->
-    {reply, {ok, State#state.syns}, State};
 handle_call(_Request, _From, State) ->
     {reply, ok, State}.
 
@@ -58,6 +53,12 @@ handle_call(_Request, _From, State) ->
     {noreply, NewState :: #state{}} |
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
+handle_cast({get_connections, Atom, Pid}, State) ->
+    ProcFile = ip_vs_conn_config:proc_file(),
+    New = ip_vs_conn:fold(fun ip_vs_conn_map:update/2, maps:new(), ProcFile),
+    {Atom,New} = erlang:send(Pid, {Atom, New}),
+    {noreply, State};
+
 handle_cast(_Request, State) ->
     {noreply, State}.
 
@@ -65,13 +66,6 @@ handle_cast(_Request, State) ->
     {noreply, NewState :: #state{}} |
     {noreply, NewState :: #state{}, timeout() | hibernate} |
     {stop, Reason :: term(), NewState :: #state{}}).
-handle_info(poll_proc, State) ->
-    ProcFile = ip_vs_conn_config:proc_file(),
-    New = ip_vs_conn:fold(fun ip_vs_conn_map:update/2, maps:new(), ProcFile),
-    NewState = State#state{syns = New},
-    erlang:send_after(splay_ms(), self(), poll_proc),
-    {noreply, NewState};
-   
 handle_info(_Info, State) ->
     {noreply, State}.
 
@@ -86,16 +80,5 @@ terminate(_Reason, _State = #state{}) ->
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
 
-get_connections() -> gen_server:call(?SERVER, get_connections).
-
-%% TODO: borrowed from minuteman, should probably be a util somewhere
--spec(splay_ms() -> integer()).
-splay_ms() ->
-    MsPerMinute = ip_vs_conn_config:interval_seconds() * 1000,
-    NextMinute = -1 * erlang:monotonic_time(milli_seconds) rem MsPerMinute,
-
-    SplayMS = ip_vs_conn_config:splay_seconds() * 1000,
-    FlooredSplayMS = max(1, SplayMS),
-    Splay = rand:uniform(FlooredSplayMS),
-
-    NextMinute + Splay.
+-spec(get_connections(Atom :: atom()) -> ok | {error, term()}).
+get_connections(Atom) -> gen_server:cast(?SERVER, {get_connections, Atom, self()}).
