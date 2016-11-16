@@ -9,16 +9,7 @@
 -module(ip_vs_conn_config).
 -author("Anatoly Yakovenko").
 
--export([interval_seconds/0,
-         splay_seconds/0,
-         proc_file/0
-         ]).
-
-interval_seconds() ->
-  application:get_env(ip_vs_conn, interval_seconds, 60).
-
-splay_seconds() ->
-  application:get_env(ip_vs_conn, splay_seconds, 10).
+-export([proc_file/0]).
 
 proc_file() ->
   application:get_env(ip_vs_conn, proc_file, "/proc/net/ip_vs_conn").
