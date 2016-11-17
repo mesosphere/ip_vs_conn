@@ -120,15 +120,17 @@ test_update(_Config) ->
     ok.
 
 
-proc_file(test_server2) -> "../../../../testdata/proc_ip_vs_conn2";
-proc_file(test_server_wait) -> "../../../../testdata/proc_ip_vs_conn2";
-proc_file(test_parse_large_close) -> "../../../../testdata/ip_vs_conn_large_close";
-proc_file(test_parse_large_syn_recv) -> "../../../../testdata/ip_vs_conn_large_syn_recv";
-proc_file(test_update) -> "../../../../testdata/ip_vs_conn_large_syn_recv";
-proc_file(_) -> "../../../../testdata/proc_ip_vs_conn".
+proc_file(Config, test_server2) -> ?config(data_dir, Config) ++ "proc_ip_vs_conn2";
+proc_file(Config, test_server_wait) -> ?config(data_dir, Config) ++ "proc_ip_vs_conn2";
+proc_file(Config, test_parse_large_close) -> ?config(data_dir, Config) ++ "ip_vs_conn_large_close";
+proc_file(Config, test_parse_large_syn_recv) -> ?config(data_dir, Config) ++ "ip_vs_conn_large_syn_recv";
+proc_file(Config, test_update) -> ?config(data_dir, Config) ++ "ip_vs_conn_large_syn_recv";
+proc_file(Config, _) -> ?config(data_dir, Config) ++ "proc_ip_vs_conn".
 
 init_per_testcase(Test, Config) ->
-    application:set_env(ip_vs_conn, proc_file, proc_file(Test)),
+    ProcFile = proc_file(Config, Test),
+    ct:pal("proc file is ~p", [ProcFile]),
+    application:set_env(ip_vs_conn, proc_file, ProcFile),
     application:set_env(ip_vs_conn, interval_seconds, 1),
     application:set_env(ip_vs_conn, splay_seconds, 1),
     {ok, _} = application:ensure_all_started(ip_vs_conn),
