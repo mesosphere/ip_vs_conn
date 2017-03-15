@@ -16,9 +16,13 @@
 %% only parses SYN_RECV and ESTABLISHED connections
 -spec(fold(fun((#ip_vs_conn_state{}, term()) -> term()), term(), string()) -> term()).
 fold(Func, ZZ, Filepath) -> 
-    file_fold(
-      fun(Line, Acc) -> recv_line(Func, Line, Acc) end, ZZ, 
-      file:open(Filepath, [read, binary, raw, {read_ahead, 1024*64}])).
+    File = file:open(Filepath, [read, binary, raw, {read_ahead, 1024*64}]),
+    Res = file_fold(fun(Line, Acc) -> recv_line(Func, Line, Acc) end, ZZ, File),
+    case File of
+       {ok, Fd} -> file:close(Fd);
+       _ -> ok
+    end,
+    Res. 
 
 %% parse connection data 
 -spec(parse(#ip_vs_conn_state{} | {connection(), #ip_vs_conn_status{}}) -> #ip_vs_conn{}).
