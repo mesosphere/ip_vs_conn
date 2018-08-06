@@ -1,8 +1,23 @@
 -module(ip_vs_conn_SUITE).
--compile(export_all).
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("include/ip_vs_conn.hrl").
+
+-export([
+    all/0,
+    init_per_testcase/2,
+    end_per_testcase/2,
+
+    test_gen_server/1,
+    test_parse/1,
+    test_parse_missing/1,
+    test_server/1,
+    test_server2/1,
+    test_server_wait/1,
+    test_parse_large_close/1,
+    test_parse_large_syn_recv/1,
+    test_update/1
+]).
 
 all() -> [test_gen_server,
           test_parse,
